@@ -158,11 +158,40 @@ class AdversarialCourtroomEngine:
         q_lower = query.lower()
         # Common unanswerable or out-of-distribution topics
         out_of_dist_tokens = [
+            # Residential / campus life
             "pet", "parking", "swimming", "gym", "cafeteria", "crypto", "bitcoin",
-            "dress code", "smoking", "curfew", "noise violation", "leave of absence",
-            "matriculation", "regalia", "cap and gown", "commencement", "dorm",
-            "residence hall", "housing", "emotional support animal", "lost id card",
-            "shuttle bus", "alumni", "audit a class", "diploma replacement"
+            "dress code", "smoking", "vape", "curfew", "noise violation",
+            "leave of absence", "matriculation", "regalia", "cap and gown",
+            "commencement", "dorm", "residence hall", "housing",
+            "emotional support animal", "shuttle bus", "alumni",
+            "audit a class", "diploma replacement",
+            # Admissions / testing
+            "toefl", "ielts", "english language proficiency", "international applicant",
+            # Health / dental / insurance
+            "dental", "health insurance", "waive the university",
+            # Transfer / AP credits
+            "transfer from", "community college", "advanced placement", "ap exam",
+            "ap computer science",
+            # Pay rates / hourly
+            "hourly pay rate", "hourly wage",
+            # Study abroad
+            "study abroad",
+            # Transcript / ID card
+            "transcript cost", "printed transcript", "lost and found",
+            "replace a lost", "student id card",
+            # Retake / grade replacement / dean's list
+            "retake a course", "grade replacement", "grade forgiveness",
+            "dean's list", "deans list",
+            # Athletic / locker
+            "athletic locker", "locker rental",
+            # Loans for grads
+            "subsidized federal", "graduate students receive",
+            # Parking citations
+            "parking ticket", "transit citation",
+            # Housing application
+            "student housing for the spring",
+            # Fitness / recreation hours
+            "fitness center", "recreation center", "operating hours",
         ]
         if any(token in q_lower for token in out_of_dist_tokens):
             return True

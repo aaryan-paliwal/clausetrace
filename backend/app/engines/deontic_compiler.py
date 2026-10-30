@@ -181,7 +181,17 @@ class DeonticRuleGraphCompiler:
 
                     if audit.has_conflict:
                         norm_axis = audit.collision_axis.strip().lower()
-                        dedup_key = (norm_axis, clause_pair_key)
+                        norm_type = (
+                            audit.conflict_type.value
+                            if hasattr(audit.conflict_type, "value")
+                            else str(audit.conflict_type)
+                        )
+                        # Deduplicate by (conflict_type, collision_axis) so only
+                        # one canonical representative per logical conflict class
+                        # is retained — e.g. one "DIRECT_MODALITY_CLASH on
+                        # termination_notice_period" regardless of how many
+                        # clause pairs triggered it.
+                        dedup_key = (norm_type, norm_axis)
                         if dedup_key in seen_conflict_keys:
                             continue
                         seen_conflict_keys.add(dedup_key)
