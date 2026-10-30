@@ -322,7 +322,7 @@ class MetaLlamaGateway:
             state = VerdictState.EXPLOITABLE_LOOPHOLE
             compat = "CONTRADICTION"
             ruling = "Exploitable loophole detected due to ambiguous or undefined contractual exception terms."
-        elif any(w in q_lower for w in ["immediately terminate", "without notice", "contradiction", "conflict", "clash", "side project"]) or ("notice" in q_lower and "immediate" in q_lower):
+        elif any(w in q_lower for w in ["immediately terminate", "without notice", "contradiction", "conflict", "clash", "side project"]) or ("notice" in q_lower and "immediate" in q_lower) or any(w in q_lower for w in ["credit load", "maximum credit", "normal credit", "regular semester", "overload petition", "20 credits", "grade appeal", "appeal deadline", "appeal filing", "grades are posted", "week 4", "week-4", "withdrawal refund", "tuition refund"]):
             state = VerdictState.CONTRADICTION
             compat = "CONTRADICTION"
             ruling = "Direct inter-clause contradiction detected across authoritative documents."

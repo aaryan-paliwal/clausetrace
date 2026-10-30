@@ -157,7 +157,13 @@ class AdversarialCourtroomEngine:
         """Fail-safe relevance gate checking whether the query is wholly out of distribution."""
         q_lower = query.lower()
         # Common unanswerable or out-of-distribution topics
-        out_of_dist_tokens = ["pet", "parking", "swimming", "gym", "cafeteria", "crypto", "bitcoin", "dress code", "smoking"]
+        out_of_dist_tokens = [
+            "pet", "parking", "swimming", "gym", "cafeteria", "crypto", "bitcoin",
+            "dress code", "smoking", "curfew", "noise violation", "leave of absence",
+            "matriculation", "regalia", "cap and gown", "commencement", "dorm",
+            "residence hall", "housing", "emotional support animal", "lost id card",
+            "shuttle bus", "alumni", "audit a class", "diploma replacement"
+        ]
         if any(token in q_lower for token in out_of_dist_tokens):
             return True
 
