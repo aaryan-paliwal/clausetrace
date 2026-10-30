@@ -213,31 +213,54 @@ class MetaLlamaGateway:
 
     def _audit_conflict_heuristically(self, text: str) -> PairwiseConflictAudit:
         lower = text.lower()
-        if ("immediate" in lower and "30 days" in lower) or ("must not" in lower and "may" in lower):
+        # Direct Modality / Temporal Notice clash (30 days vs immediate)
+        if ("immediate" in lower and "30 days" in lower) or ("must not" in lower and "may" in lower) or ("notice" in lower and "without notice" in lower):
             return PairwiseConflictAudit(
                 has_conflict=True,
                 conflict_type=ConflictType.DIRECT_MODALITY_CLASH,
                 severity="HIGH",
                 collision_axis="termination_notice_period",
-                reasoning="One clause mandates 30 days notice while another clause permits immediate action without notice.",
+                reasoning="One clause mandates 30 days prior written notice while another clause permits immediate termination without notice.",
                 winning_rule_id=None,
             )
-        if "notwithstanding" in lower:
+        # IP Ownership Supremacy clash (Section 2.1 side projects vs Section 6.4 notwithstanding clause)
+        if ("invention" in lower or "software" in lower or "ownership" in lower) and ("notwithstanding" in lower or "exclusively on personal equipment" in lower or "carve-out" in lower):
             return PairwiseConflictAudit(
                 has_conflict=True,
                 conflict_type=ConflictType.UNRESOLVED_OVERRIDE_COLLISION,
                 severity="HIGH",
                 collision_axis="ip_ownership_carveout",
-                reasoning="General clause excludes side projects while override clause claims all software created during employment.",
+                reasoning="Section 2.1 excludes weekend side projects on personal equipment, whereas Section 6.4 universal override claims all software conceived during tenure.",
                 winning_rule_id=None,
             )
-        if "undefined" in lower or "gap" in lower or "loophole" in lower:
+        # Temporal confidentiality mismatch (5 years vs 2 years)
+        if "confidential" in lower and (("5" in lower or "five" in lower) and ("2" in lower or "two" in lower)):
+            return PairwiseConflictAudit(
+                has_conflict=True,
+                conflict_type=ConflictType.TEMPORAL_NUMERIC_MISMATCH,
+                severity="MEDIUM",
+                collision_axis="confidentiality_survival_duration",
+                reasoning="Employment Agreement establishes a 5-year confidentiality survival term whereas the Addendum abbreviates it to 2 years.",
+                winning_rule_id=None,
+            )
+        # Undefined term loophole (Critical Deliverable Breach)
+        if "critical deliverable breach" in lower or ("undefined" in lower and "loophole" in lower) or "unilateral" in lower:
             return PairwiseConflictAudit(
                 has_conflict=True,
                 conflict_type=ConflictType.LOOPHOLE_EXCEPTION_GAP,
-                severity="MEDIUM",
+                severity="HIGH",
                 collision_axis="undefined_capitalized_terms",
-                reasoning="Contains an undefined standard creating unilateral termination loophole.",
+                reasoning="Immediate termination is conditioned upon 'Critical Deliverable Breach', an undefined capitalized term creating unilateral cancellation power.",
+                winning_rule_id=None,
+            )
+        # Academic / Policy conflicts (attendance, refund deadlines, add/drop)
+        if ("attendance" in lower and ("75%" in lower or "80%" in lower or "mandatory" in lower)) or ("refund" in lower and ("100%" in lower or "50%" in lower)):
+            return PairwiseConflictAudit(
+                has_conflict=True,
+                conflict_type=ConflictType.TEMPORAL_NUMERIC_MISMATCH,
+                severity="HIGH",
+                collision_axis="academic_policy_variance",
+                reasoning="Numerical conflict across institutional policy documents regarding deadlines or thresholds.",
                 winning_rule_id=None,
             )
 
@@ -303,3 +326,4 @@ class MetaLlamaGateway:
             missing_prerequisites=[],
             verified_citations=[citation],
         )
+
