@@ -34,8 +34,10 @@ htmlcov/
 # Database & Persistent storage
 *.db
 *.sqlite3
-data/
-!data/.gitkeep
+backend/data/*.db
+backend/data/*.sqlite3
+data/*.db
+data/*.sqlite3
 
 # Environment & Credentials
 .env

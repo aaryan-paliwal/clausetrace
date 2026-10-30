@@ -1,0 +1,495 @@
+{
+  "version": "1.0",
+  "metadata": {
+    "corpus": "Western Oak University Policy Corpus",
+    "total_cases": 60,
+    "distribution": {
+      "ANSWERABLE": 20,
+      "CONTRADICTION": 15,
+      "NOT_COVERED": 25
+    },
+    "description": "Ground truth benchmark dataset for ClauseTrace evaluation suite."
+  },
+  "cases": [
+    {
+      "id": "ANS-01",
+      "question": "What is the minimum physical attendance rate required in classes for undergraduate and graduate students?",
+      "expected_state": "ANSWERABLE",
+      "expected_source_chunks": ["academic_policy::chunk_007"],
+      "category": "attendance",
+      "notes": "Direct factual lookup: Section 4.1 mandates 75% physical attendance."
+    },
+    {
+      "id": "ANS-02",
+      "question": "What reduced attendance percentage applies to a student with an approved medical exemption?",
+      "expected_state": "ANSWERABLE",
+      "expected_source_chunks": ["academic_policy::chunk_008"],
+      "category": "medical_exception",
+      "notes": "Legitimate exception scenario: Section 4.2 reduces threshold to 60% with documented medical necessity."
+    },
+    {
+      "id": "ANS-03",
+      "question": "Within how many days of the initial absence must a student submit medical documentation for an attendance exemption?",
+      "expected_state": "ANSWERABLE",
+      "expected_source_chunks": ["academic_policy::chunk_008"],
+      "category": "medical_exception",
+      "notes": "Section 4.2 states documentation must be submitted within 5 business days."
+    },
+    {
+      "id": "ANS-04",
+      "question": "How many total semester credit hours are required to earn an undergraduate baccalaureate degree?",
+      "expected_state": "ANSWERABLE",
+      "expected_source_chunks": ["academic_policy::chunk_003"],
+      "category": "degree_requirements",
+      "notes": "Section 2.1 requires minimum of 120 semester credit hours."
+    },
+    {
+      "id": "ANS-05",
+      "question": "How many upper-division credit hours must a baccalaureate degree candidate complete?",
+      "expected_state": "ANSWERABLE",
+      "expected_source_chunks": ["academic_policy::chunk_003"],
+      "category": "degree_requirements",
+      "notes": "Section 2.1 mandates at least 45 credits at 3000-level or higher."
+    },
+    {
+      "id": "ANS-06",
+      "question": "What is the minimum institutional residency credit requirement for an undergraduate degree?",
+      "expected_state": "ANSWERABLE",
+      "expected_source_chunks": ["academic_policy::chunk_003"],
+      "category": "degree_requirements",
+      "notes": "Section 2.1 requires minimum of 30 credit hours earned through direct residential instruction."
+    },
+    {
+      "id": "ANS-07",
+      "question": "What cumulative GPA range qualifies a graduating senior for Cum Laude honors?",
+      "expected_state": "ANSWERABLE",
+      "expected_source_chunks": ["academic_policy::chunk_019"],
+      "category": "latin_honors",
+      "notes": "Section 8.2 Latin Honors: Cum Laude is 3.500 to 3.699 CGPA."
+    },
+    {
+      "id": "ANS-08",
+      "question": "What cumulative GPA is required to earn Summa Cum Laude Latin honors at commencement?",
+      "expected_state": "ANSWERABLE",
+      "expected_source_chunks": ["academic_policy::chunk_019"],
+      "category": "latin_honors",
+      "notes": "Section 8.2 Latin Honors: Summa Cum Laude is 3.900 to 4.000 CGPA."
+    },
+    {
+      "id": "ANS-09",
+      "question": "What is the maximum number of credit hours an undergraduate on academic probation may register for?",
+      "expected_state": "ANSWERABLE",
+      "expected_source_chunks": ["academic_policy::chunk_013"],
+      "category": "academic_probation",
+      "notes": "Section 6.3 states student may not register for more than 13 credit hours."
+    },
+    {
+      "id": "ANS-10",
+      "question": "Within how many calendar days must incomplete coursework be completed before the grade converts to an F?",
+      "expected_state": "ANSWERABLE",
+      "expected_source_chunks": ["academic_policy::chunk_017"],
+      "category": "grading_policy",
+      "notes": "Section 7.3 states incomplete coursework must be submitted within 60 calendar days."
+    },
+    {
+      "id": "ANS-11",
+      "question": "What is the per-semester tuition for a full-time resident undergraduate taking 12 to 18 credits?",
+      "expected_state": "ANSWERABLE",
+      "expected_source_chunks": ["fee_schedule::chunk_003"],
+      "category": "tuition",
+      "notes": "Table 1.1 states full-time resident undergraduate tuition is $6,450.00 per term."
+    },
+    {
+      "id": "ANS-12",
+      "question": "What is the specialized course laboratory fee for Biology and Chemistry wet lab courses?",
+      "expected_state": "ANSWERABLE",
+      "expected_source_chunks": ["fee_schedule::chunk_006"],
+      "category": "course_fees",
+      "notes": "Table 3 states Biology and Chemistry wet lab surcharge is $175.00 per course."
+    },
+    {
+      "id": "ANS-13",
+      "question": "What is the mandatory University Technology Fee charged per semester?",
+      "expected_state": "ANSWERABLE",
+      "expected_source_chunks": ["fee_schedule::chunk_005"],
+      "category": "mandatory_fees",
+      "notes": "Section 2 table states Technology Fee is $285.00 per semester."
+    },
+    {
+      "id": "ANS-14",
+      "question": "What late fee is assessed when tuition is not paid by the payment deadline?",
+      "expected_state": "ANSWERABLE",
+      "expected_source_chunks": ["fee_schedule::chunk_009"],
+      "category": "payment_penalties",
+      "notes": "Section 4.3 states late charge is $100.00 immediately plus 1.5% monthly compound interest."
+    },
+    {
+      "id": "ANS-15",
+      "question": "What cumulative GPA is required to renew the Presidential Excellence Scholarship?",
+      "expected_state": "ANSWERABLE",
+      "expected_source_chunks": ["financial_aid::chunk_004"],
+      "category": "scholarship_renewal",
+      "notes": "Section 2.2 states Presidential Excellence requires minimum cumulative GPA of 3.40."
+    },
+    {
+      "id": "ANS-16",
+      "question": "What is the priority submission deadline for the annual FAFSA and CSS profile?",
+      "expected_state": "ANSWERABLE",
+      "expected_source_chunks": ["financial_aid::chunk_010"],
+      "category": "financial_aid_deadlines",
+      "notes": "Section 6.1 states annual FAFSA and CSS priority deadline is February 15."
+    },
+    {
+      "id": "ANS-17",
+      "question": "How many hours per week may a student work in an on-campus work-study job during regular semesters?",
+      "expected_state": "ANSWERABLE",
+      "expected_source_chunks": ["financial_aid::chunk_006"],
+      "category": "work_study",
+      "notes": "Section 4 states students may work a maximum of 20 hours per week during regular instructional periods."
+    },
+    {
+      "id": "ANS-18",
+      "question": "How long does a student have to claim an open seat when notified by the automated waitlist system?",
+      "expected_state": "ANSWERABLE",
+      "expected_source_chunks": ["registration_guide::p03_chunk_003"],
+      "category": "course_registration",
+      "notes": "Section 3.2 specifies an absolute reservation window of exactly 24 hours from email dispatch timestamp."
+    },
+    {
+      "id": "ANS-19",
+      "question": "What evidentiary standard is used by the University Student Conduct Board during disciplinary hearings?",
+      "expected_state": "ANSWERABLE",
+      "expected_source_chunks": ["student_conduct::chunk_008"],
+      "category": "student_conduct",
+      "notes": "Section 4.2 states Preponderance of the Evidence standard is used."
+    },
+    {
+      "id": "ANS-20",
+      "question": "Within how many business days must a student file an appeal of a disciplinary hearing finding?",
+      "expected_state": "ANSWERABLE",
+      "expected_source_chunks": ["student_conduct::chunk_010"],
+      "category": "conduct_appeals",
+      "notes": "Section 6.1 states appeals must be submitted within 10 business days of written board decision."
+    },
+    {
+      "id": "CONT-01-A",
+      "question": "What is the maximum number of credits an undergraduate student can register for in a regular semester?",
+      "expected_state": "CONTRADICTION",
+      "expected_source_chunks": ["academic_policy::chunk_004", "registration_guide::p02_chunk_002"],
+      "category": "contradiction_credit_limit",
+      "notes": "CONT-01: Academic Policy mandates 18 credits max without overload, while Registration Guide allows 21 credits without override."
+    },
+    {
+      "id": "CONT-01-B",
+      "question": "What is the normal undergraduate semester credit load ceiling before needing an overload petition?",
+      "expected_state": "CONTRADICTION",
+      "expected_source_chunks": ["academic_policy::chunk_004", "registration_guide::p02_chunk_002"],
+      "category": "contradiction_credit_limit",
+      "notes": "CONT-01 variant: Conflicting threshold of 18 credits (Academic Policy §2.2) vs 21 credits (Registration Guide §2.1)."
+    },
+    {
+      "id": "CONT-01-C",
+      "question": "Can an undergraduate student take 20 credits in Autumn without special approval?",
+      "expected_state": "CONTRADICTION",
+      "expected_source_chunks": ["academic_policy::chunk_004", "registration_guide::p02_chunk_002"],
+      "category": "contradiction_credit_limit",
+      "notes": "CONT-01 variant: Under Academic Policy 20 credits requires overload petition (>18); under Registration Guide it is allowed directly (<21)."
+    },
+    {
+      "id": "CONT-01-D",
+      "question": "How many credits can an undergraduate enroll in during Spring semester through self-service registration?",
+      "expected_state": "CONTRADICTION",
+      "expected_source_chunks": ["academic_policy::chunk_004", "registration_guide::p02_chunk_002"],
+      "category": "contradiction_credit_limit",
+      "notes": "CONT-01 variant: Academic Policy says max normal is 18; Registration Guide says self-service permits up to 21 credits."
+    },
+    {
+      "id": "CONT-01-E",
+      "question": "What is the credit limit for regular undergraduate enrollment before requiring advisor permission?",
+      "expected_state": "CONTRADICTION",
+      "expected_source_chunks": ["academic_policy::chunk_004", "registration_guide::p02_chunk_002"],
+      "category": "contradiction_credit_limit",
+      "notes": "CONT-01 variant: Academic Policy caps at 18 credits; Registration Guide states 21 credits without advisor overrides."
+    },
+    {
+      "id": "CONT-02-A",
+      "question": "What is the deadline to file a formal grade appeal after semester grades are posted?",
+      "expected_state": "CONTRADICTION",
+      "expected_source_chunks": ["academic_policy::chunk_010", "student_conduct::chunk_011"],
+      "category": "contradiction_grade_appeal",
+      "notes": "CONT-02: Academic Policy specifies exactly 30 calendar days; Student Conduct specifies exactly 45 business days."
+    },
+    {
+      "id": "CONT-02-B",
+      "question": "How many days do I have to submit a written grade appeal petition after final grade publication?",
+      "expected_state": "CONTRADICTION",
+      "expected_source_chunks": ["academic_policy::chunk_010", "student_conduct::chunk_011"],
+      "category": "contradiction_grade_appeal",
+      "notes": "CONT-02 variant: 30 calendar days (§5.2 Academic Policy) vs 45 business days (§6.2 Student Conduct)."
+    },
+    {
+      "id": "CONT-02-C",
+      "question": "What is the absolute time limit for lodging a formal course grade challenge?",
+      "expected_state": "CONTRADICTION",
+      "expected_source_chunks": ["academic_policy::chunk_010", "student_conduct::chunk_011"],
+      "category": "contradiction_grade_appeal",
+      "notes": "CONT-02 variant: Conflict between 30 calendar days cutoff and 45 business days cutoff."
+    },
+    {
+      "id": "CONT-02-D",
+      "question": "If final grades are posted, what is the official deadline to appeal a course grade?",
+      "expected_state": "CONTRADICTION",
+      "expected_source_chunks": ["academic_policy::chunk_010", "student_conduct::chunk_011"],
+      "category": "contradiction_grade_appeal",
+      "notes": "CONT-02 variant: Academic Policy §5.2 vs Student Conduct §6.2."
+    },
+    {
+      "id": "CONT-02-E",
+      "question": "Can I submit a formal grade appeal 35 calendar days after grades are posted?",
+      "expected_state": "CONTRADICTION",
+      "expected_source_chunks": ["academic_policy::chunk_010", "student_conduct::chunk_011"],
+      "category": "contradiction_grade_appeal",
+      "notes": "CONT-02 variant: Under Academic Policy day 35 is dismissed (>30 calendar days); under Student Conduct it is accepted (within 45 business days)."
+    },
+    {
+      "id": "CONT-03-A",
+      "question": "What percentage of tuition is refunded if a student withdraws during Week 4 of the semester?",
+      "expected_state": "CONTRADICTION",
+      "expected_source_chunks": ["fee_schedule::chunk_012", "financial_aid::chunk_009"],
+      "category": "contradiction_week4_refund",
+      "notes": "CONT-03: Fee Schedule guarantees 50% refund; Financial Aid Handbook mandates 25% refund."
+    },
+    {
+      "id": "CONT-03-B",
+      "question": "How much tuition refund is granted for an official course withdrawal in the fourth week of instruction?",
+      "expected_state": "CONTRADICTION",
+      "expected_source_chunks": ["fee_schedule::chunk_012", "financial_aid::chunk_009"],
+      "category": "contradiction_week4_refund",
+      "notes": "CONT-03 variant: 50% refund (§5.2 Fee Schedule) vs 25% refund (§5.3 Financial Aid)."
+    },
+    {
+      "id": "CONT-03-C",
+      "question": "What is the official tuition refund rate for term withdrawals between calendar days 22 and 28?",
+      "expected_state": "CONTRADICTION",
+      "expected_source_chunks": ["fee_schedule::chunk_012", "financial_aid::chunk_009"],
+      "category": "contradiction_week4_refund",
+      "notes": "CONT-03 variant: Days 22-28 (Week 4) yields 50% in Fee Schedule vs 25% in Financial Aid Handbook."
+    },
+    {
+      "id": "CONT-03-D",
+      "question": "If I withdraw from the university during week four, do I receive a 50% or 25% tuition refund?",
+      "expected_state": "CONTRADICTION",
+      "expected_source_chunks": ["fee_schedule::chunk_012", "financial_aid::chunk_009"],
+      "category": "contradiction_week4_refund",
+      "notes": "CONT-03 variant: Direct prompt highlighting the two conflicting numbers."
+    },
+    {
+      "id": "CONT-03-E",
+      "question": "What is the institutional refund policy for withdrawing during the mid-term window of week 4?",
+      "expected_state": "CONTRADICTION",
+      "expected_source_chunks": ["fee_schedule::chunk_012", "financial_aid::chunk_009"],
+      "category": "contradiction_week4_refund",
+      "notes": "CONT-03 variant: Fee Schedule §5.1-5.2 (50%) vs Financial Aid §5.2-5.3 (25%)."
+    },
+    {
+      "id": "NC-01",
+      "question": "What is the undergraduate curfew in campus residence halls?",
+      "expected_state": "NOT_COVERED",
+      "expected_source_chunks": [],
+      "category": "unanswerable_near_miss",
+      "notes": "Plausible residential question; corpus discusses move-in dates and cancellation fees but is silent on curfews."
+    },
+    {
+      "id": "NC-02",
+      "question": "Can undergraduate students keep emotional support animals or pets in dorm rooms?",
+      "expected_state": "NOT_COVERED",
+      "expected_source_chunks": [],
+      "category": "unanswerable_near_miss",
+      "notes": "Plausible residential question; corpus never defines pet or ESA policies."
+    },
+    {
+      "id": "NC-03",
+      "question": "How much does an annual campus student parking permit cost?",
+      "expected_state": "NOT_COVERED",
+      "expected_source_chunks": [],
+      "category": "unanswerable_near_miss",
+      "notes": "Plausible transit question; transit fee ($85) and parking holds are mentioned, but permit purchase price is absent."
+    },
+    {
+      "id": "NC-04",
+      "question": "What is the maximum fine for a noise violation in university housing?",
+      "expected_state": "NOT_COVERED",
+      "expected_source_chunks": [],
+      "category": "unanswerable_near_miss",
+      "notes": "Plausible conduct question; general sanctions are listed, but housing noise fine amounts do not exist."
+    },
+    {
+      "id": "NC-05",
+      "question": "How many continuous semesters of leave of absence can a student take before losing matriculation?",
+      "expected_state": "NOT_COVERED",
+      "expected_source_chunks": [],
+      "category": "unanswerable_near_miss",
+      "notes": "Plausible academic policy question; suspension duration is given, but voluntary personal leave limits are absent."
+    },
+    {
+      "id": "NC-06",
+      "question": "What is the rental cost for graduation regalia cap and gown at commencement?",
+      "expected_state": "NOT_COVERED",
+      "expected_source_chunks": [],
+      "category": "unanswerable_near_miss",
+      "notes": "Plausible graduation question; $120 commencement fee is stated, but regalia rental pricing is absent."
+    },
+    {
+      "id": "NC-07",
+      "question": "What are the operating hours and weekend schedule for the campus recreation and fitness center?",
+      "expected_state": "NOT_COVERED",
+      "expected_source_chunks": [],
+      "category": "unanswerable_near_miss",
+      "notes": "Plausible campus fee question; recreation fee ($140) is billed, but facility operating hours are absent."
+    },
+    {
+      "id": "NC-08",
+      "question": "Where can students smoke or vape on campus grounds?",
+      "expected_state": "NOT_COVERED",
+      "expected_source_chunks": [],
+      "category": "unanswerable_near_miss",
+      "notes": "Plausible conduct question; alcohol/drugs are prohibited, but smoking/vaping perimeters are not defined."
+    },
+    {
+      "id": "NC-09",
+      "question": "What is the rental price for an athletic locker in the campus gym?",
+      "expected_state": "NOT_COVERED",
+      "expected_source_chunks": [],
+      "category": "unanswerable_near_miss",
+      "notes": "Plausible athletic question; lab fees and recreation fees are listed, but locker rentals are completely absent."
+    },
+    {
+      "id": "NC-10",
+      "question": "What is the minimum TOEFL or IELTS English language proficiency score required for international applicants?",
+      "expected_state": "NOT_COVERED",
+      "expected_source_chunks": [],
+      "category": "unanswerable_near_miss",
+      "notes": "Plausible admissions question; non-resident tuition and visas are covered, but test score minimums are absent."
+    },
+    {
+      "id": "NC-11",
+      "question": "Does the student health center provide free dental cleaning appointments?",
+      "expected_state": "NOT_COVERED",
+      "expected_source_chunks": [],
+      "category": "unanswerable_near_miss",
+      "notes": "Plausible wellness fee question; wellness fee ($195) is billed, but clinical dental benefits are absent."
+    },
+    {
+      "id": "NC-12",
+      "question": "How many credit hours can an undergraduate transfer from an accredited community college?",
+      "expected_state": "NOT_COVERED",
+      "expected_source_chunks": [],
+      "category": "unanswerable_near_miss",
+      "notes": "Plausible credit transfer question; 30 residential credits required, but maximum transfer credit cap is absent."
+    },
+    {
+      "id": "NC-13",
+      "question": "What is the hourly pay rate for on-campus student work-study positions?",
+      "expected_state": "NOT_COVERED",
+      "expected_source_chunks": [],
+      "category": "unanswerable_near_miss",
+      "notes": "Plausible work-study question; 20 hr weekly cap is stated, but hourly wage is not specified."
+    },
+    {
+      "id": "NC-14",
+      "question": "How often does the campus shuttle bus run on Saturday and Sunday?",
+      "expected_state": "NOT_COVERED",
+      "expected_source_chunks": [],
+      "category": "unanswerable_near_miss",
+      "notes": "Plausible transit fee question; $85 transit fee is charged, but weekend shuttle schedules are absent."
+    },
+    {
+      "id": "NC-15",
+      "question": "What is the minimum cumulative GPA required to participate in an official Study Abroad semester?",
+      "expected_state": "NOT_COVERED",
+      "expected_source_chunks": [],
+      "category": "unanswerable_near_miss",
+      "notes": "Plausible academic question; study abroad revocation is a sanction, but GPA qualification is absent."
+    },
+    {
+      "id": "NC-16",
+      "question": "What is the deadline to waive the university health insurance plan?",
+      "expected_state": "NOT_COVERED",
+      "expected_source_chunks": [],
+      "category": "unanswerable_near_miss",
+      "notes": "Plausible wellness fee question; health fee is mandatory, but health insurance waiver deadline is absent."
+    },
+    {
+      "id": "NC-17",
+      "question": "How can a student appeal a campus parking ticket or transit citation?",
+      "expected_state": "NOT_COVERED",
+      "expected_source_chunks": [],
+      "category": "unanswerable_near_miss",
+      "notes": "Plausible parking question; parking holds exist, but citation appeal procedure is absent."
+    },
+    {
+      "id": "NC-18",
+      "question": "What is the fee to replace a lost Western Oak University student ID card?",
+      "expected_state": "NOT_COVERED",
+      "expected_source_chunks": [],
+      "category": "unanswerable_near_miss",
+      "notes": "Plausible exam policy question; photo ID is mandatory for exams, but replacement card cost is absent."
+    },
+    {
+      "id": "NC-19",
+      "question": "Can an undergraduate retake a course to replace a low grade on their cumulative GPA?",
+      "expected_state": "NOT_COVERED",
+      "expected_source_chunks": [],
+      "category": "unanswerable_near_miss",
+      "notes": "Plausible grading question; grading scale is defined, but grade forgiveness / course retake policy is absent."
+    },
+    {
+      "id": "NC-20",
+      "question": "What is the minimum GPA required to be named to the semester Dean's List?",
+      "expected_state": "NOT_COVERED",
+      "expected_source_chunks": [],
+      "category": "unanswerable_near_miss",
+      "notes": "Plausible academic honors question; Latin honors at graduation are defined, but term Dean's List GPA is absent."
+    },
+    {
+      "id": "NC-21",
+      "question": "How much does an official printed academic transcript cost from the Registrar?",
+      "expected_state": "NOT_COVERED",
+      "expected_source_chunks": [],
+      "category": "unanswerable_near_miss",
+      "notes": "Plausible Registrar question; transcript holds are detailed, but fee per printed transcript is absent."
+    },
+    {
+      "id": "NC-22",
+      "question": "Is there a designated lost and found office on the campus grounds?",
+      "expected_state": "NOT_COVERED",
+      "expected_source_chunks": [],
+      "category": "unanswerable_near_miss",
+      "notes": "Plausible campus conduct question; property theft is addressed, but lost-and-found repository is absent."
+    },
+    {
+      "id": "NC-23",
+      "question": "What score on the Advanced Placement (AP) Computer Science exam grants college credit?",
+      "expected_state": "NOT_COVERED",
+      "expected_source_chunks": [],
+      "category": "unanswerable_near_miss",
+      "notes": "Plausible degree credit question; CS courses and 120 credit requirements exist, but AP scores are absent."
+    },
+    {
+      "id": "NC-24",
+      "question": "What is the application deadline to apply for campus student housing for the Spring semester?",
+      "expected_state": "NOT_COVERED",
+      "expected_source_chunks": [],
+      "category": "unanswerable_near_miss",
+      "notes": "Plausible housing question; move-in dates and cancellation fees are detailed, but application deadline is absent."
+    },
+    {
+      "id": "NC-25",
+      "question": "Can graduate students receive subsidized federal direct student loans?",
+      "expected_state": "NOT_COVERED",
+      "expected_source_chunks": [],
+      "category": "unanswerable_near_miss",
+      "notes": "Plausible financial aid question; loan facilities are referenced broadly, but graduate eligibility is absent."
+    }
+  ]
+}
