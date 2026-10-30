@@ -103,6 +103,7 @@ class CounterfactualPatchEngine:
                 remaining_conflicts=remaining_conflicts,
             )
 
+        patch_result.patch_id = patch_id
         return patch_result
 
     async def _verify_patch_in_memory(

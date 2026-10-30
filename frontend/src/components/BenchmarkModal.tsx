@@ -245,3 +245,4 @@ export const BenchmarkModal: React.FC<BenchmarkModalProps> = ({
     </div>
   );
 };
+

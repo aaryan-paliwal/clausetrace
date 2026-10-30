@@ -118,3 +118,4 @@ class CounterfactualPatchResult(BaseModel):
     verification_passed: bool
     initial_conflicts: int
     remaining_conflicts: int
+    patch_id: Optional[str] = None

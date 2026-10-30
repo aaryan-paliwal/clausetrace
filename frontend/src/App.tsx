@@ -100,6 +100,14 @@ export const App: React.FC = () => {
     loadGraph();
   }, [activeWorkspaceId]);
 
+  // Handler for uploading document
+  const handleUploadDocument = async (file: File) => {
+    await api.uploadDocument(activeWorkspaceId, file);
+    // Refresh graph
+    const updatedGraph = await api.getWorkspaceGraph(activeWorkspaceId);
+    setGraph(updatedGraph);
+  };
+
   // Handler for selecting conflict from matrix
   const handleSelectConflict = (conflict: RuleConflict) => {
     setSelectedConflict(conflict);
@@ -132,16 +140,21 @@ export const App: React.FC = () => {
   const handleApplyPatch = async () => {
     if (!patchConflict || !patchResult) return;
     try {
-      // Find created patch ID from repository or re-query graph
-      const g = await api.getWorkspaceGraph(activeWorkspaceId);
-      // Fallback apply directly
-      await api.applyPatch(activeWorkspaceId, `patch_${patchConflict.id}`);
+      let patchId = patchResult.patch_id;
+      if (!patchId) {
+        // Fallback: search graph for matching patch
+        const currentGraph = await api.getWorkspaceGraph(activeWorkspaceId);
+        const match = currentGraph.patches?.find((p: any) => p.conflict_id === patchConflict.id);
+        patchId = match ? match.id : `patch_${patchConflict.id}`;
+      }
+      if (patchId) {
+        await api.applyPatch(activeWorkspaceId, patchId);
+      }
       // Refresh graph to show RESOLVED state
       const updatedGraph = await api.getWorkspaceGraph(activeWorkspaceId);
       setGraph(updatedGraph);
     } catch (err) {
       console.error('Apply patch error:', err);
-      // Re-fetch graph anyway to synchronize state
       const updatedGraph = await api.getWorkspaceGraph(activeWorkspaceId);
       setGraph(updatedGraph);
     }
@@ -208,6 +221,7 @@ export const App: React.FC = () => {
         activeWorkspaceId={activeWorkspaceId}
         onSelectWorkspace={setActiveWorkspaceId}
         onOpenBenchmark={() => setIsBenchmarkModalOpen(true)}
+        onUploadDocument={handleUploadDocument}
         metrics={graph?.summary_metrics}
       />
 

@@ -76,6 +76,7 @@ export interface WorkspaceGraph {
   clauses: Clause[];
   deontic_rules: DeonticRule[];
   conflicts: RuleConflict[];
+  patches?: any[];
   nodes: any[];
   edges: any[];
 }
@@ -121,6 +122,7 @@ export interface CounterfactualPatchResult {
   verification_passed: boolean;
   initial_conflicts: number;
   remaining_conflicts: number;
+  patch_id?: string;
 }
 
 export interface BenchmarkMetrics {
@@ -164,6 +166,20 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ workspace_id: workspaceId, pack_name: packName }),
     });
+    return res.json();
+  },
+
+  async uploadDocument(workspaceId: string, file: File): Promise<any> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch(`${API_BASE}/workspaces/${workspaceId}/documents`, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Failed to upload document' }));
+      throw new Error(err.detail || 'Upload failed');
+    }
     return res.json();
   },
 

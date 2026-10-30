@@ -1,5 +1,5 @@
-import React from 'react';
-import { ShieldCheck, BarChart3, Database, Cpu, Sparkles } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { ShieldCheck, BarChart3, Database, Cpu, Upload, Loader2, Check } from 'lucide-react';
 import { Workspace } from '../api/client';
 
 interface NavbarProps {
@@ -7,6 +7,7 @@ interface NavbarProps {
   activeWorkspaceId: string;
   onSelectWorkspace: (id: string) => void;
   onOpenBenchmark: () => void;
+  onUploadDocument: (file: File) => Promise<void>;
   metrics?: {
     active_conflicts: number;
     critical_count: number;
@@ -19,8 +20,33 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeWorkspaceId,
   onSelectWorkspace,
   onOpenBenchmark,
+  onUploadDocument,
   metrics,
 }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      await onUploadDocument(file);
+      setUploadSuccess(true);
+      setTimeout(() => setUploadSuccess(false), 2000);
+    } catch (err) {
+      console.error('File upload failed:', err);
+      alert('Upload failed: ' + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   return (
     <header className="h-16 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-40">
       <div className="flex items-center space-x-6">
@@ -58,7 +84,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       </div>
 
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center space-x-3">
         {/* Proactive Conflict Badges */}
         {metrics && (
           <div className="hidden lg:flex items-center space-x-2 bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-1">
@@ -73,16 +99,48 @@ export const Navbar: React.FC<NavbarProps> = ({
         )}
 
         {/* Active Meta Llama Model Badge */}
-        <div className="flex items-center space-x-2 bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5">
+        <div className="hidden sm:flex items-center space-x-2 bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5">
           <Cpu className="w-4 h-4 text-indigo-400 animate-pulse" />
           <div className="flex flex-col text-left">
-            <span className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Engine Engine</span>
+            <span className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Engine</span>
             <span className="text-xs font-semibold text-slate-200 flex items-center gap-1.5">
               Llama 3.3 70B
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 ring-2 ring-emerald-500/20"></span>
             </span>
           </div>
         </div>
+
+        {/* Upload Document Trigger */}
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileChange}
+          accept=".md,.txt,.pdf"
+          className="hidden"
+        />
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isUploading}
+          className="flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-slate-200 hover:text-white text-xs font-semibold border border-slate-700 hover:border-slate-600 transition-all shadow-sm"
+          title="Upload .md, .txt, or .pdf to parse clauses and re-compile deontic graph"
+        >
+          {isUploading ? (
+            <>
+              <Loader2 className="w-4 h-4 text-indigo-400 animate-spin" />
+              <span>Compiling...</span>
+            </>
+          ) : uploadSuccess ? (
+            <>
+              <Check className="w-4 h-4 text-emerald-400" />
+              <span>Uploaded!</span>
+            </>
+          ) : (
+            <>
+              <Upload className="w-4 h-4 text-slate-300" />
+              <span>Upload Document</span>
+            </>
+          )}
+        </button>
 
         {/* Benchmark Trigger Button */}
         <button
