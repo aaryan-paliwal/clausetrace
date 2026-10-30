@@ -132,13 +132,14 @@ class DeonticRuleGraphCompiler:
         workspace_id: str,
         rules: List[Dict[str, Any]],
     ) -> List[Dict[str, Any]]:
-        """Group rules by category and perform pairwise conflict audits."""
+        """Group rules by category and perform pairwise conflict audits with deduplication."""
         # Group by action category
         grouped: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
         for r in rules:
             grouped[r["action_category"]].append(r)
 
         conflicts_created = []
+        seen_conflict_keys = set()
 
         for category, cat_rules in grouped.items():
             n = len(cat_rules)
@@ -150,6 +151,9 @@ class DeonticRuleGraphCompiler:
                     # Pruning: Skip if rules belong to exact same clause and have identical modality
                     if r_a["clause_id"] == r_b["clause_id"] and r_a["modality"] == r_b["modality"]:
                         continue
+
+                    # Deduplication key across unordered clause pair and category
+                    clause_pair_key = tuple(sorted([r_a["clause_id"], r_b["clause_id"]]))
 
                     prompt = (
                         f"Rule A (ID: {r_a['id']}, Doc: {r_a['doc_id']}):\n"
@@ -176,6 +180,12 @@ class DeonticRuleGraphCompiler:
                     )
 
                     if audit.has_conflict:
+                        norm_axis = audit.collision_axis.strip().lower()
+                        dedup_key = (norm_axis, clause_pair_key)
+                        if dedup_key in seen_conflict_keys:
+                            continue
+                        seen_conflict_keys.add(dedup_key)
+
                         conflict_id = f"conf_{uuid.uuid4().hex[:10]}"
                         with get_db_context(self.db_path) as conn:
                             repo = Repository(conn)
@@ -290,3 +300,4 @@ class DeonticRuleGraphCompiler:
             "nodes": nodes,
             "edges": edges,
         }
+
