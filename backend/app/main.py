@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
+from app.api.workspaces import router as workspaces_router
 
 app = FastAPI(
     title="ClauseTrace API",
@@ -19,6 +20,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(workspaces_router)
 
 
 @app.get("/api/v1/health")
