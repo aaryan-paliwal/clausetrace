@@ -15,14 +15,15 @@ import { PersonaId, ProblemTask, PERSONAS, PERSONA_TASKS } from '../data/persona
 import { PersonaSelector } from './PersonaSelector';
 import { TaskSelector } from './TaskSelector';
 import { ProblemIntakeForm } from './ProblemIntakeForm';
-import { Workspace } from '../api/client';
+import { Workspace, DocumentUploadResponse } from '../api/client';
 
 interface UnifiedEntryViewProps {
   workspaces: Workspace[];
   activeWorkspaceId: string;
+  hasUserUploadedDocument: boolean;
   onSelectWorkspace: (id: string) => void;
-  onUploadDocument: (file: File) => Promise<void>;
-  onProceedToAnalysis: (query: string, customContext?: string) => void;
+  onUploadDocument: (file: File) => Promise<DocumentUploadResponse>;
+  onProceedToAnalysis: (query: string, customContext?: string, persona?: string, taskId?: string) => void;
   onOpenBenchmark: () => void;
   onDirectToWorkspace: () => void;
 }
@@ -30,6 +31,7 @@ interface UnifiedEntryViewProps {
 export const UnifiedEntryView: React.FC<UnifiedEntryViewProps> = ({
   workspaces,
   activeWorkspaceId,
+  hasUserUploadedDocument,
   onSelectWorkspace,
   onUploadDocument,
   onProceedToAnalysis,
@@ -49,10 +51,12 @@ export const UnifiedEntryView: React.FC<UnifiedEntryViewProps> = ({
     if (firstAvailable) {
       setSelectedTask(firstAvailable);
     }
-    // Also auto-select suggested workspace if matching
-    const cfg = PERSONAS[newPersona];
-    if (cfg && cfg.defaultWorkspaceId && workspaces.some(w => w.id === cfg.defaultWorkspaceId)) {
-      onSelectWorkspace(cfg.defaultWorkspaceId);
+    // Only auto-switch the document collection if the user hasn't uploaded their own files yet
+    if (!hasUserUploadedDocument) {
+      const cfg = PERSONAS[newPersona];
+      if (cfg && cfg.defaultWorkspaceId && workspaces.some(w => w.id === cfg.defaultWorkspaceId)) {
+        onSelectWorkspace(cfg.defaultWorkspaceId);
+      }
     }
   };
 
@@ -63,16 +67,16 @@ export const UnifiedEntryView: React.FC<UnifiedEntryViewProps> = ({
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold">
-              <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-              ClauseTrace Evidence Verification Platform
+              <Scale className="w-3.5 h-3.5 text-indigo-400" />
+              ClauseTrace Legal Intelligence Platform
             </div>
 
             <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white">
-              Evidence-Grounded Legal Intelligence & Conflict Detection
+              Evidence-Grounded Contract & Policy Verification
             </h1>
 
             <p className="text-sm text-slate-300 leading-relaxed font-normal">
-              Cross-examine agreements, expose conflicting obligations, and audit contract risk using our 
+              Cross-examine agreements, expose conflicting obligations, and audit contractual risk using our 
               <span className="text-white font-semibold"> 3-Agent Adversarial Courtroom</span> and 
               <span className="text-indigo-400 font-semibold"> In-Memory Redline Verifier</span>.
             </p>
@@ -82,15 +86,15 @@ export const UnifiedEntryView: React.FC<UnifiedEntryViewProps> = ({
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
             <button
               onClick={onDirectToWorkspace}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-800/90 hover:bg-slate-700 active:bg-slate-800 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 transition-all shadow-md"
+              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-800/90 hover:bg-slate-700 active:bg-slate-800 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 transition-all shadow-md cursor-pointer"
             >
-              <span>Explore Raw Workspace IDE</span>
+              <span>Explore Analysis Workspace</span>
               <ChevronRight className="w-4 h-4 text-slate-400" />
             </button>
 
             <button
               onClick={onOpenBenchmark}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white text-xs font-bold rounded-xl border border-indigo-400/30 transition-all shadow-lg shadow-indigo-600/20"
+              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white text-xs font-bold rounded-xl border border-indigo-400/30 transition-all shadow-lg shadow-indigo-600/20 cursor-pointer"
             >
               <BarChart3 className="w-4 h-4" />
               <span>60-Case Evaluation Suite</span>
@@ -126,9 +130,10 @@ export const UnifiedEntryView: React.FC<UnifiedEntryViewProps> = ({
           task={selectedTask}
           workspaces={workspaces}
           activeWorkspaceId={activeWorkspaceId}
+          hasUserUploadedDocument={hasUserUploadedDocument}
           onSelectWorkspace={onSelectWorkspace}
           onUploadDocument={onUploadDocument}
-          onProceedToAnalysis={onProceedToAnalysis}
+          onProceedToAnalysis={(q, ctx) => onProceedToAnalysis(q, ctx, selectedPersona, selectedTask.id)}
         />
       </section>
     </div>

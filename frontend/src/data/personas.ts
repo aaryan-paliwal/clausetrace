@@ -31,29 +31,29 @@ export const PERSONAS: Record<PersonaId, PersonaConfig> = {
   employee: {
     id: 'employee',
     title: 'Employee / Job Seeker',
-    badge: 'Career & Employment',
-    tagline: 'Safeguard your compensation, intellectual property, non-competes, and termination rights.',
-    description: 'Analyze offer letters, employment covenants, IP assignment carve-outs, notice periods, and severance terms.',
+    badge: 'Employment & Career',
+    tagline: 'Audit compensation clauses, IP assignment terms, non-compete covenants, and termination notice rules.',
+    description: 'Examine employment contracts, appointment letters, IP carve-out clauses, notice periods, and separation terms for conflicting obligations.',
     defaultWorkspaceId: 'ws_startup_legal',
-    highlightCategory: 'Employment & IP Rights',
+    highlightCategory: 'Employment & IP Terms',
   },
   founder: {
     id: 'founder',
     title: 'Founder / Startup',
-    badge: 'Venture & Governance',
-    tagline: 'Audit co-founder covenants, vesting acceleration, contractor terms, and IP ownership supremacy.',
-    description: 'Detect dangerous clause collisions between founder agreements, contractor schedules, and confidential IP policies.',
+    badge: 'Founder & Venture',
+    tagline: 'Audit founder agreements, vesting acceleration, contractor covenants, and IP assignment overrides.',
+    description: 'Detect cross-clause collisions between founder agreements, consultant contracts, and proprietary IP policies.',
     defaultWorkspaceId: 'ws_startup_legal',
-    highlightCategory: 'Startup Governance',
+    highlightCategory: 'Startup & Governance',
   },
   hr: {
     id: 'hr',
     title: 'HR / Employer',
     badge: 'Workforce & Policy',
-    tagline: 'Harmonize handbooks, offer schedules, attendance rules, and mutual dispute obligations.',
-    description: 'Ensure institutional consistency across employee agreements, policy manuals, disciplinary codes, and separation rules.',
+    tagline: 'Harmonize workplace policy handbooks, offer schedules, attendance rules, and mutual dispute obligations.',
+    description: 'Check consistency across employee agreements, policy manuals, disciplinary codes, and exit procedures.',
     defaultWorkspaceId: 'ws_startup_legal',
-    highlightCategory: 'Workplace Compliance',
+    highlightCategory: 'Workplace Policies',
   },
   business: {
     id: 'business',
@@ -62,16 +62,16 @@ export const PERSONAS: Record<PersonaId, PersonaConfig> = {
     tagline: 'Detect conflicting operational liabilities, service level agreements, and unilateral cancellation terms.',
     description: 'Audit master service agreements, addenda, fee refund policies, and cross-document termination covenants.',
     defaultWorkspaceId: 'ws_startup_legal',
-    highlightCategory: 'Commercial Integrity',
+    highlightCategory: 'Commercial Contracts',
   },
   individual: {
     id: 'individual',
     title: 'Individual / General User',
-    badge: 'Personal Rights & Policies',
-    tagline: 'Navigate complex consumer agreements, institutional policy manuals, and student regulations.',
-    description: 'Verify grading appeal deadlines, tuition fee refunds, credit enrollment caps, and administrative procedures.',
+    badge: 'Personal & Institutional',
+    tagline: 'Review institutional policies, consumer agreements, academic guidelines, and administrative rules.',
+    description: 'Verify grade appeal deadlines, tuition fee refunds, credit enrollment caps, and institutional dispute procedures.',
     defaultWorkspaceId: 'ws_university_policy',
-    highlightCategory: 'Consumer & Institutional',
+    highlightCategory: 'Institutional & Consumer',
   },
 };
 
@@ -92,7 +92,7 @@ export const PERSONA_TASKS: Record<PersonaId, ProblemTask[]> = {
     {
       id: 'emp_understand_clause',
       title: 'Understand a Legal Clause',
-      description: 'Break down ambiguous definitions, conditional prerequisites, and deceptive exception traps.',
+      description: 'Examine definitions, conditional prerequisites, and exception terms for hidden obligations.',
       status: 'available',
       recommendedQueries: [
         'What defines a Critical Deliverable Breach that triggers termination?',
@@ -103,7 +103,7 @@ export const PERSONA_TASKS: Record<PersonaId, ProblemTask[]> = {
     {
       id: 'emp_find_unfair_terms',
       title: 'Find Unfair or Colliding Terms',
-      description: 'Examine cross-document conflicts between core employment terms and proprietary IP addenda.',
+      description: 'Examine cross-document conflicts between core employment covenants and separate IP or confidentiality addenda.',
       status: 'available',
       recommendedQueries: [
         'Is there a conflict between my side project IP ownership carveout and the universal invention assignment override?',
@@ -114,7 +114,7 @@ export const PERSONA_TASKS: Record<PersonaId, ProblemTask[]> = {
     {
       id: 'emp_check_compliance',
       title: 'Check Compliance Obligations',
-      description: 'Cross-examine mandatory post-termination restrictions, non-disclosure durations, and return of property.',
+      description: 'Review post-separation restrictions, non-disclosure survival periods, and property return obligations.',
       status: 'available',
       recommendedQueries: [
         'What is the exact survival duration of confidentiality obligations: 5 years or 2 years?',
@@ -124,18 +124,18 @@ export const PERSONA_TASKS: Record<PersonaId, ProblemTask[]> = {
     {
       id: 'emp_statutory_violations',
       title: 'Identify Statutory Legal Violations',
-      description: 'Scan covenants against jurisdictional statutory labor codes and unfair competition jurisprudence.',
+      description: 'Verify contractual covenants against statutory labor enactments and employment guidelines.',
       status: 'forthcoming',
-      statusNote: 'Planned for Phase 2: Jurisdiction-specific labor statute verification engine (e.g., CA Bus & Prof Code § 16600).',
+      statusNote: 'Forthcoming: Statutory legal research and legislative compliance checking are planned for a subsequent release.',
       recommendedQueries: [],
       suggestedPromptTemplate: '',
     },
     {
       id: 'emp_draft_representation',
       title: 'Draft Formal Legal Representation',
-      description: 'Generate attorney-ready formal letters or cure contestations backed by statutory citations.',
+      description: 'Draft formal legal notices, representation letters, or dispute replies.',
       status: 'forthcoming',
-      statusNote: 'Planned for Phase 2: Formal legal dispatch drafting engine.',
+      statusNote: 'Forthcoming: Formal legal correspondence drafting will be supported once Indian statutory reference modules are integrated.',
       recommendedQueries: [],
       suggestedPromptTemplate: '',
     },
@@ -145,7 +145,7 @@ export const PERSONA_TASKS: Record<PersonaId, ProblemTask[]> = {
     {
       id: 'fnd_review_contract',
       title: 'Review Founder & Executive Contracts',
-      description: 'Verify cross-document harmony between founder agreements, board mandates, and IP assignments.',
+      description: 'Verify cross-document harmony between founder agreements, board resolutions, and IP assignments.',
       status: 'available',
       recommendedQueries: [
         'Can an executive be dismissed immediately without written cure notice upon subjective milestone failure?',
@@ -156,7 +156,7 @@ export const PERSONA_TASKS: Record<PersonaId, ProblemTask[]> = {
     {
       id: 'fnd_understand_clause',
       title: 'Understand Acceleration & Vesting Covenants',
-      description: 'Examine single and double trigger vesting terms, acceleration events, and forfeiture triggers.',
+      description: 'Examine vesting terms, acceleration events, and forfeiture triggers for contractual ambiguity.',
       status: 'available',
       recommendedQueries: [
         'What defines a Critical Deliverable Breach that triggers termination?',
@@ -166,8 +166,8 @@ export const PERSONA_TASKS: Record<PersonaId, ProblemTask[]> = {
     },
     {
       id: 'fnd_find_unfair_terms',
-      title: 'Detect Deontic Collisions & Loopholes',
-      description: 'Run the proactive conflict matrix to pinpoint direct modality clashes and unresolved overrides.',
+      title: 'Detect Structural Collisions & Loopholes',
+      description: 'Identify direct modality clashes, notice discrepancies, and unresolved override clauses.',
       status: 'available',
       recommendedQueries: [
         'Does Section 6.4 notwithstanding clause erase the Section 2.1 personal equipment carve-out?',
@@ -178,7 +178,7 @@ export const PERSONA_TASKS: Record<PersonaId, ProblemTask[]> = {
     {
       id: 'fnd_check_compliance',
       title: 'Check Post-Termination Survival Terms',
-      description: 'Verify non-disclosure durations, restrictive covenants, and trade secret obligations.',
+      description: 'Verify non-disclosure durations, restrictive covenants, and trade secret obligations across documents.',
       status: 'available',
       recommendedQueries: [
         'What is the exact duration of the confidentiality covenant across all documents?',
@@ -188,18 +188,18 @@ export const PERSONA_TASKS: Record<PersonaId, ProblemTask[]> = {
     {
       id: 'fnd_remedies',
       title: 'Understand Legal Rights & Remedies',
-      description: 'Map breach remedies, injunctive relief clauses, and indemnification caps.',
+      description: 'Analyze contractual remedies, breach provisions, and damages caps.',
       status: 'forthcoming',
-      statusNote: 'Planned for Phase 2: Statutory damage calculation and multi-jurisdictional remedies matrix.',
+      statusNote: 'Forthcoming: Statutory remedies analysis and legal damage estimation modules will be introduced in future updates.',
       recommendedQueries: [],
       suggestedPromptTemplate: '',
     },
     {
       id: 'fnd_draft_representation',
       title: 'Draft Board & Co-Founder Redlines',
-      description: 'Produce bilateral contract amendments and waiver certificates.',
+      description: 'Generate bilateral contract amendments and waiver certificates.',
       status: 'forthcoming',
-      statusNote: 'Planned for Phase 2: Automated bilateral redline agreement pack generation.',
+      statusNote: 'Forthcoming: Formal contract amendment drafting is planned for a subsequent release.',
       recommendedQueries: [],
       suggestedPromptTemplate: '',
     },
@@ -250,10 +250,10 @@ export const PERSONA_TASKS: Record<PersonaId, ProblemTask[]> = {
     },
     {
       id: 'hr_statutory_violations',
-      title: 'Jurisdictional Labor Law Audit',
-      description: 'Evaluate handbook compliance against federal and local labor board directives.',
+      title: 'Employment Regulation Audit',
+      description: 'Evaluate workplace policy compliance against applicable statutory employment standards.',
       status: 'forthcoming',
-      statusNote: 'Planned for Phase 2: EEOC and state labor standards harmonization module.',
+      statusNote: 'Forthcoming: Statutory workplace regulation verification is planned once Indian legal intelligence modules are active.',
       recommendedQueries: [],
       suggestedPromptTemplate: '',
     },
@@ -262,7 +262,7 @@ export const PERSONA_TASKS: Record<PersonaId, ProblemTask[]> = {
       title: 'Draft Employee Notice of Breach',
       description: 'Generate standardized formal cure notices and termination documentation.',
       status: 'forthcoming',
-      statusNote: 'Planned for Phase 2: Formal notice letter generation.',
+      statusNote: 'Forthcoming: Automated drafting of formal employee breach notices is planned for Phase 2.',
       recommendedQueries: [],
       suggestedPromptTemplate: '',
     },
@@ -283,7 +283,7 @@ export const PERSONA_TASKS: Record<PersonaId, ProblemTask[]> = {
     {
       id: 'biz_understand_clause',
       title: 'Analyze Liability & Termination Provisions',
-      description: 'Audit clauses for vague contractual triggers, unilateral cancellation traps, and notice obligations.',
+      description: 'Audit clauses for vague contractual triggers, unilateral cancellation terms, and notice obligations.',
       status: 'available',
       recommendedQueries: [
         'What defines a Critical Deliverable Breach that triggers termination?',
@@ -294,7 +294,7 @@ export const PERSONA_TASKS: Record<PersonaId, ProblemTask[]> = {
     {
       id: 'biz_find_unfair_terms',
       title: 'Detect Master vs Addendum Discrepancies',
-      description: 'Identify where vendor addenda covertly override core covenants or shorten protection windows.',
+      description: 'Identify where vendor addenda contradict core covenants or modify agreed protection windows.',
       status: 'available',
       recommendedQueries: [
         'Is there a conflict between the baseline agreement and the addendum regarding notice period?',
@@ -305,7 +305,7 @@ export const PERSONA_TASKS: Record<PersonaId, ProblemTask[]> = {
     {
       id: 'biz_check_compliance',
       title: 'Check Confidentiality & Survival Clauses',
-      description: 'Audit how long confidential commercial terms and customer lists remain legally protected.',
+      description: 'Audit how long confidential commercial terms and customer lists remain legally protected across documents.',
       status: 'available',
       recommendedQueries: [
         'What is the exact duration of confidentiality survival across the master agreement and addenda?',
@@ -315,9 +315,9 @@ export const PERSONA_TASKS: Record<PersonaId, ProblemTask[]> = {
     {
       id: 'biz_remedies',
       title: 'Assess Breach Remedies & Liquidated Damages',
-      description: 'Evaluate statutory compliance of limitation of liability and indemnification caps.',
+      description: 'Evaluate statutory enforceability of limitation of liability and indemnification caps.',
       status: 'forthcoming',
-      statusNote: 'Planned for Phase 2: Commercial UCC and CISG statutory remedies engine.',
+      statusNote: 'Forthcoming: Statutory remedies analysis and commercial damage assessment are planned for a future update.',
       recommendedQueries: [],
       suggestedPromptTemplate: '',
     },
@@ -326,7 +326,7 @@ export const PERSONA_TASKS: Record<PersonaId, ProblemTask[]> = {
       title: 'Draft Contract Amendment / Addendum',
       description: 'Generate legally binding addendum language to neutralize unilateral exploit clauses.',
       status: 'forthcoming',
-      statusNote: 'Planned for Phase 2: Multiparty amendment pack drafting.',
+      statusNote: 'Forthcoming: Formal contract amendment and addenda drafting will be enabled in Phase 2.',
       recommendedQueries: [],
       suggestedPromptTemplate: '',
     },
@@ -335,8 +335,8 @@ export const PERSONA_TASKS: Record<PersonaId, ProblemTask[]> = {
   individual: [
     {
       id: 'ind_review_contract',
-      title: 'Review Institutional Policy / Consumer Contract',
-      description: 'Audit institutional policy documents, university codes, or consumer agreements for rights and caps.',
+      title: 'Review Institutional Policy / Consumer Agreement',
+      description: 'Audit institutional policy documents, codes of conduct, or consumer agreements for rights and caps.',
       status: 'available',
       recommendedQueries: [
         'What is the maximum number of credits an undergraduate student can register for in a regular semester?',
@@ -383,9 +383,9 @@ export const PERSONA_TASKS: Record<PersonaId, ProblemTask[]> = {
     {
       id: 'ind_statutory_violations',
       title: 'Identify Consumer Protection Violations',
-      description: 'Scan institutional cancellation fees against state consumer protection statutes.',
+      description: 'Scan institutional cancellation fees against statutory consumer protection standards.',
       status: 'forthcoming',
-      statusNote: 'Planned for Phase 2: Educational consumer protection & Title IX compliance checker.',
+      statusNote: 'Forthcoming: Statutory consumer protection verification is planned for Phase 2.',
       recommendedQueries: [],
       suggestedPromptTemplate: '',
     },
@@ -394,7 +394,7 @@ export const PERSONA_TASKS: Record<PersonaId, ProblemTask[]> = {
       title: 'Draft Formal Administrative Appeal',
       description: 'Generate formatted administrative appeal petitions citing governing handbook sections.',
       status: 'forthcoming',
-      statusNote: 'Planned for Phase 2: Administrative appeal and waiver petition letter generator.',
+      statusNote: 'Forthcoming: Automated administrative appeal letter generation will be added in a future release.',
       recommendedQueries: [],
       suggestedPromptTemplate: '',
     },

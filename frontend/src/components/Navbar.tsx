@@ -18,7 +18,7 @@ interface NavbarProps {
   activeWorkspaceId: string;
   onSelectWorkspace: (id: string) => void;
   onOpenBenchmark: () => void;
-  onUploadDocument: (file: File) => Promise<void>;
+  onUploadDocument: (file: File) => Promise<any>;
   currentView: 'entry' | 'workspace';
   onToggleView: (view: 'entry' | 'workspace') => void;
   metrics?: {

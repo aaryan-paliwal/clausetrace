@@ -10,12 +10,14 @@ import {
   Sparkles,
   Info,
   Clock,
-  Layers
+  Layers,
+  User,
+  HelpCircle
 } from 'lucide-react';
-import { AgentBrief, CourtroomVerdict } from '../api/client';
+import { AgentBrief, CourtroomVerdict, CourtroomQueryParams } from '../api/client';
 
 interface CourtroomStreamProps {
-  onAsk: (query: string) => void;
+  onAsk: (params: CourtroomQueryParams) => void;
   isLoading: boolean;
   verdict: CourtroomVerdict | null;
   advocateBrief: AgentBrief | null;
@@ -23,6 +25,9 @@ interface CourtroomStreamProps {
   statusMessage: string | null;
   onCitationClick?: (clauseId: string) => void;
   initialQuery?: string;
+  activePersona?: string;
+  activeTaskId?: string;
+  activeFactualContext?: string;
 }
 
 export const CourtroomStream: React.FC<CourtroomStreamProps> = ({
@@ -34,14 +39,26 @@ export const CourtroomStream: React.FC<CourtroomStreamProps> = ({
   statusMessage,
   onCitationClick,
   initialQuery,
+  activePersona,
+  activeTaskId,
+  activeFactualContext,
 }) => {
   const [query, setQuery] = useState(initialQuery || '');
+  const [factualContext, setFactualContext] = useState(activeFactualContext || '');
+  const [showContextField, setShowContextField] = useState(Boolean(activeFactualContext));
 
   useEffect(() => {
     if (initialQuery) {
       setQuery(initialQuery);
     }
   }, [initialQuery]);
+
+  useEffect(() => {
+    if (activeFactualContext) {
+      setFactualContext(activeFactualContext);
+      setShowContextField(true);
+    }
+  }, [activeFactualContext]);
 
   const sampleQueries = [
     'Can the company immediately terminate employment without notice or cure?',
@@ -54,7 +71,12 @@ export const CourtroomStream: React.FC<CourtroomStreamProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (query.trim() && !isLoading) {
-      onAsk(query.trim());
+      onAsk({
+        query: query.trim(),
+        factual_context: factualContext.trim() || undefined,
+        persona: activePersona,
+        task_id: activeTaskId,
+      });
     }
   };
 
@@ -95,7 +117,7 @@ export const CourtroomStream: React.FC<CourtroomStreamProps> = ({
           bg: 'from-emerald-950/80 to-slate-950 border-emerald-500/40',
           text: 'text-emerald-400',
           icon: <CheckCircle className="w-5 h-5 text-emerald-400" />,
-          title: 'Affirmative Deontic Authority Verified',
+          title: 'Affirmative Authority Verified',
           badge: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
         };
     }
@@ -104,48 +126,89 @@ export const CourtroomStream: React.FC<CourtroomStreamProps> = ({
   return (
     <div className="flex flex-col h-full bg-slate-950">
       {/* Query Bar */}
-      <div className="p-4 border-b border-slate-800 bg-slate-900/40">
-        <form onSubmit={handleSubmit} className="flex items-center gap-2">
-          <div className="relative flex-1">
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Ask a premise, legal inquiry, or cross-clause conflict check..."
-              disabled={isLoading}
-              className="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl px-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all pr-10"
-            />
+      <div className="p-4 border-b border-slate-800 bg-slate-900/40 space-y-2.5">
+        {/* Context metadata badge bar */}
+        {(activePersona || activeTaskId) && (
+          <div className="flex items-center justify-between text-[11px] text-slate-400 pb-1 border-b border-slate-800/60">
+            <div className="flex items-center gap-2">
+              {activePersona && (
+                <span className="inline-flex items-center gap-1 font-semibold text-slate-300 bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700/60 uppercase text-[10px]">
+                  <User className="w-3 h-3 text-indigo-400" />
+                  {activePersona}
+                </span>
+              )}
+              {activeTaskId && (
+                <span className="text-[10px] font-mono text-slate-400">
+                  task: {activeTaskId}
+                </span>
+              )}
+            </div>
             <button
               type="button"
-              onClick={handleSimulateVoice}
-              title="Sample random legal premise"
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-400 transition-colors cursor-pointer"
+              onClick={() => setShowContextField(!showContextField)}
+              className="text-[10px] text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
             >
-              <Mic className="w-4 h-4" />
+              {showContextField ? 'Hide Factual Context' : '+ Add Factual Context'}
+            </button>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-2">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Ask a premise, legal inquiry, or cross-clause conflict check..."
+                disabled={isLoading}
+                className="w-full bg-slate-900/90 border border-slate-700/80 rounded-xl px-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all pr-10"
+              />
+              <button
+                type="button"
+                onClick={handleSimulateVoice}
+                title="Sample random legal premise"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-400 transition-colors cursor-pointer"
+              >
+                <Mic className="w-4 h-4" />
+              </button>
+            </div>
+
+            <button
+              type="submit"
+              disabled={!query.trim() || isLoading}
+              className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 text-white text-xs font-semibold rounded-xl shadow-lg shadow-indigo-600/20 transition-all border border-indigo-400/30 cursor-pointer disabled:cursor-not-allowed"
+            >
+              {isLoading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>Adjudicating...</span>
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4" />
+                  <span>Examine</span>
+                </>
+              )}
             </button>
           </div>
 
-          <button
-            type="submit"
-            disabled={!query.trim() || isLoading}
-            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 text-white text-xs font-semibold rounded-xl shadow-lg shadow-indigo-600/20 transition-all border border-indigo-400/30 cursor-pointer disabled:cursor-not-allowed"
-          >
-            {isLoading ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                <span>Adjudicating...</span>
-              </>
-            ) : (
-              <>
-                <Send className="w-4 h-4" />
-                <span>Examine</span>
-              </>
-            )}
-          </button>
+          {/* Collapsible factual background input */}
+          {showContextField && (
+            <div className="flex items-center gap-2 bg-slate-950/80 border border-slate-800 rounded-lg p-2">
+              <input
+                type="text"
+                value={factualContext}
+                onChange={(e) => setFactualContext(e.target.value)}
+                placeholder="Factual context / case details (e.g. Employee joined in 2024, signed addendum B)"
+                className="w-full bg-transparent text-xs text-slate-300 placeholder-slate-500 focus:outline-none font-sans"
+              />
+            </div>
+          )}
         </form>
 
         {/* Query Presets Chips */}
-        <div className="flex items-center gap-1.5 mt-2.5 overflow-x-auto pb-1 text-[11px] text-slate-400">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 text-[11px] text-slate-400">
           <span className="shrink-0 text-slate-500 font-medium">Presets:</span>
           {sampleQueries.slice(0, 3).map((sq, idx) => (
             <button
@@ -153,7 +216,12 @@ export const CourtroomStream: React.FC<CourtroomStreamProps> = ({
               type="button"
               onClick={() => {
                 setQuery(sq);
-                onAsk(sq);
+                onAsk({
+                  query: sq,
+                  factual_context: factualContext.trim() || undefined,
+                  persona: activePersona,
+                  task_id: activeTaskId,
+                });
               }}
               className="shrink-0 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 px-2.5 py-1 rounded-lg text-slate-300 transition-all truncate max-w-xs cursor-pointer"
             >
@@ -183,7 +251,7 @@ export const CourtroomStream: React.FC<CourtroomStreamProps> = ({
               3-Agent Adversarial Courtroom Console
             </h3>
             <p className="text-xs text-slate-400 max-w-md leading-relaxed mb-4">
-              Enter any inquiry or premise above. The engine retrieves deontic rules, deploys The Advocate to construct the affirmative case, The Skeptic to cross-examine conflicts and loopholes, and The Adjudicator to issue an authoritative ruling.
+              Enter any contractual inquiry or premise above. The engine retrieves relevant clauses, deploys The Advocate to construct the affirmative position, The Skeptic to cross-examine conflicts, and The Adjudicator to issue an evidence-grounded ruling.
             </p>
           </div>
         )}
@@ -221,7 +289,7 @@ export const CourtroomStream: React.FC<CourtroomStreamProps> = ({
               <div className="pl-7 pt-2 border-t border-slate-800/80 flex flex-wrap items-center gap-1.5">
                 <span className="text-[11px] font-semibold text-slate-400 flex items-center gap-1">
                   <FileSearch className="w-3.5 h-3.5 text-indigo-400" />
-                  Verified Citations:
+                  Cited Clauses:
                 </span>
                 {verdict.verified_citations.map((cite, idx) => (
                   <button
@@ -252,7 +320,7 @@ export const CourtroomStream: React.FC<CourtroomStreamProps> = ({
                     </h4>
                   </div>
                   <span className="text-[10px] font-mono text-sky-400/80 bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20">
-                    Pro-Permit
+                    Affirmative
                   </span>
                 </div>
 
@@ -310,7 +378,7 @@ export const CourtroomStream: React.FC<CourtroomStreamProps> = ({
                     </ul>
                     {skepticBrief.flagged_gaps_or_undefined_terms.length > 0 && (
                       <div className="text-[10px] text-amber-300/90 bg-amber-500/10 border border-amber-500/20 rounded p-2">
-                        <span className="font-semibold">Flagged Exceptions / Loopholes:</span>{' '}
+                        <span className="font-semibold">Flagged Exceptions / Collisions:</span>{' '}
                         {skepticBrief.flagged_gaps_or_undefined_terms.join(', ')}
                       </div>
                     )}

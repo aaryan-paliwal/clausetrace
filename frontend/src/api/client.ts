@@ -147,6 +147,28 @@ export interface BenchmarkMetrics {
   sample_results: any[];
 }
 
+export interface CourtroomQueryParams {
+  query: string;
+  factual_context?: string;
+  persona?: string;
+  task_id?: string;
+}
+
+export interface DocumentUploadResponse {
+  status: string;
+  doc_id: string;
+  title: string;
+  clauses_created: number;
+  summary_metrics: {
+    total_documents: number;
+    total_clauses: number;
+    total_rules: number;
+    active_conflicts: number;
+    critical_count: number;
+    total_patches: number;
+  };
+}
+
 const API_BASE = '/api/v1';
 
 export const api = {
@@ -169,7 +191,7 @@ export const api = {
     return res.json();
   },
 
-  async uploadDocument(workspaceId: string, file: File): Promise<any> {
+  async uploadDocument(workspaceId: string, file: File): Promise<DocumentUploadResponse> {
     const formData = new FormData();
     formData.append('file', file);
     const res = await fetch(`${API_BASE}/workspaces/${workspaceId}/documents`, {
@@ -188,26 +210,28 @@ export const api = {
     return res.json();
   },
 
-  async askCourtroom(workspaceId: string, query: string): Promise<CourtroomVerdict> {
+  async askCourtroom(workspaceId: string, params: string | CourtroomQueryParams): Promise<CourtroomVerdict> {
+    const payload = typeof params === 'string' ? { query: params } : params;
     const res = await fetch(`${API_BASE}/workspaces/${workspaceId}/courtroom/ask`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query }),
+      body: JSON.stringify(payload),
     });
     return res.json();
   },
 
   streamCourtroom(
     workspaceId: string,
-    query: string,
+    params: string | CourtroomQueryParams,
     onEvent: (event: string, data: any) => void,
     onError: (err: any) => void
   ) {
+    const payload = typeof params === 'string' ? { query: params } : params;
     const controller = new AbortController();
     fetch(`${API_BASE}/workspaces/${workspaceId}/courtroom/stream`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query }),
+      body: JSON.stringify(payload),
       signal: controller.signal,
     })
       .then(async (response) => {

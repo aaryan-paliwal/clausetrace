@@ -9,6 +9,8 @@ import {
   AgentBrief,
   CounterfactualPatchResult,
   BenchmarkMetrics,
+  CourtroomQueryParams,
+  DocumentUploadResponse,
 } from './api/client';
 import { Navbar } from './components/Navbar';
 import { UnifiedEntryView } from './components/UnifiedEntryView';
@@ -27,19 +29,25 @@ export const App: React.FC = () => {
   const [graph, setGraph] = useState<WorkspaceGraph | null>(null);
   const [isLoadingGraph, setIsLoadingGraph] = useState<boolean>(true);
 
+  // Track if user has uploaded custom documents to protect active workspace selection
+  const [hasUserUploadedDocument, setHasUserUploadedDocument] = useState<boolean>(false);
+
   // Selected conflict & dual clause viewer states
   const [selectedConflict, setSelectedConflict] = useState<RuleConflict | null>(null);
   const [clauseA, setClauseA] = useState<Clause | null>(null);
   const [clauseB, setClauseB] = useState<Clause | null>(null);
   const [highlightClauseId, setHighlightClauseId] = useState<string | null>(null);
 
-  // Courtroom stream state
+  // Courtroom stream state & context preservation
   const [isAdjudicating, setIsAdjudicating] = useState<boolean>(false);
   const [verdict, setVerdict] = useState<CourtroomVerdict | null>(null);
   const [advocateBrief, setAdvocateBrief] = useState<AgentBrief | null>(null);
   const [skepticBrief, setSkepticBrief] = useState<AgentBrief | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [activeQuery, setActiveQuery] = useState<string>('');
+  const [activePersona, setActivePersona] = useState<string>('employee');
+  const [activeTaskId, setActiveTaskId] = useState<string>('emp_review_contract');
+  const [activeFactualContext, setActiveFactualContext] = useState<string>('');
 
   // Patch sandbox modal state
   const [isPatchModalOpen, setIsPatchModalOpen] = useState<boolean>(false);
@@ -106,11 +114,13 @@ export const App: React.FC = () => {
   }, [activeWorkspaceId]);
 
   // Handler for uploading document
-  const handleUploadDocument = async (file: File) => {
-    await api.uploadDocument(activeWorkspaceId, file);
-    // Refresh graph
+  const handleUploadDocument = async (file: File): Promise<DocumentUploadResponse> => {
+    const res = await api.uploadDocument(activeWorkspaceId, file);
+    setHasUserUploadedDocument(true);
+    // Refresh graph to incorporate new clauses
     const updatedGraph = await api.getWorkspaceGraph(activeWorkspaceId);
     setGraph(updatedGraph);
+    return res;
   };
 
   // Handler for selecting conflict from matrix
@@ -165,9 +175,13 @@ export const App: React.FC = () => {
     }
   };
 
-  // Handler for asking courtroom via SSE stream
-  const handleAskCourtroom = (query: string) => {
-    setActiveQuery(query);
+  // Handler for asking courtroom via SSE stream with full structured context
+  const handleAskCourtroom = (params: CourtroomQueryParams) => {
+    setActiveQuery(params.query);
+    if (params.persona) setActivePersona(params.persona);
+    if (params.task_id) setActiveTaskId(params.task_id);
+    if (params.factual_context !== undefined) setActiveFactualContext(params.factual_context);
+
     setIsAdjudicating(true);
     setVerdict(null);
     setAdvocateBrief(null);
@@ -176,7 +190,7 @@ export const App: React.FC = () => {
 
     api.streamCourtroom(
       activeWorkspaceId,
-      query,
+      params,
       (event, data) => {
         if (event === 'status') {
           setStatusMessage(data.message);
@@ -220,11 +234,25 @@ export const App: React.FC = () => {
   };
 
   // Handler for proceeding from Product Entry to Courtroom Workspace
-  const handleProceedToAnalysis = (query: string, customContext?: string) => {
+  const handleProceedToAnalysis = (
+    query: string, 
+    customContext?: string, 
+    persona?: string, 
+    taskId?: string
+  ) => {
     setCurrentView('workspace');
     setActiveQuery(query);
-    // Automatically trigger courtroom query execution in the workspace
-    handleAskCourtroom(query);
+    if (persona) setActivePersona(persona);
+    if (taskId) setActiveTaskId(taskId);
+    if (customContext) setActiveFactualContext(customContext);
+
+    // Forward structured context into courtroom API call
+    handleAskCourtroom({
+      query,
+      factual_context: customContext?.trim() || undefined,
+      persona: persona || activePersona,
+      task_id: taskId || activeTaskId,
+    });
   };
 
   return (
@@ -246,6 +274,7 @@ export const App: React.FC = () => {
         <UnifiedEntryView
           workspaces={workspaces}
           activeWorkspaceId={activeWorkspaceId}
+          hasUserUploadedDocument={hasUserUploadedDocument}
           onSelectWorkspace={setActiveWorkspaceId}
           onUploadDocument={handleUploadDocument}
           onProceedToAnalysis={handleProceedToAnalysis}
@@ -278,6 +307,9 @@ export const App: React.FC = () => {
               statusMessage={statusMessage}
               onCitationClick={handleCitationClick}
               initialQuery={activeQuery}
+              activePersona={activePersona}
+              activeTaskId={activeTaskId}
+              activeFactualContext={activeFactualContext}
             />
           </div>
 

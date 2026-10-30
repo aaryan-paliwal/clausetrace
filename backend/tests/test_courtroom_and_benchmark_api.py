@@ -28,7 +28,7 @@ def test_courtroom_ask_and_stream_endpoints():
     # 1. Trigger list to auto-seed startup founder legal
     client.get("/api/v1/workspaces")
 
-    # 2. Ask courtroom endpoint
+    # 2. Ask courtroom endpoint (basic query)
     ask_res = client.post(
         "/api/v1/workspaces/ws_startup_legal/courtroom/ask",
         json={"query": "What is the Executive base salary?"},
@@ -39,10 +39,29 @@ def test_courtroom_ask_and_stream_endpoints():
     assert "advocate_brief" in verdict
     assert "skeptic_brief" in verdict
 
-    # 3. Stream courtroom endpoint
+    # 3. Ask courtroom endpoint with full factual context, persona, and task_id
+    ask_with_ctx = client.post(
+        "/api/v1/workspaces/ws_startup_legal/courtroom/ask",
+        json={
+            "query": "Can the company immediately terminate employment without notice or cure upon a missed milestone?",
+            "factual_context": "Executive employee joined in 2024 under signed employment agreement and addendum",
+            "persona": "employee",
+            "task_id": "emp_review_contract",
+        },
+    )
+    assert ask_with_ctx.status_code == 200
+    verdict_ctx = ask_with_ctx.json()
+    assert verdict_ctx["verdict_state"] in ["CONTRADICTION", "EXPLOITABLE_LOOPHOLE"]
+
+    # 4. Stream courtroom endpoint with factual context
     stream_res = client.post(
         "/api/v1/workspaces/ws_startup_legal/courtroom/stream",
-        json={"query": "What is the Executive base salary?"},
+        json={
+            "query": "What is the Executive base salary?",
+            "factual_context": "Full-time founding executive role",
+            "persona": "founder",
+            "task_id": "fnd_review_contract",
+        },
     )
     assert stream_res.status_code == 200
     stream_text = stream_res.text
@@ -69,7 +88,6 @@ def test_conflict_patch_and_apply_endpoints():
 
     # 2. Apply patch
     graph_after_patch = client.get("/api/v1/workspaces/ws_startup_legal/graph")
-    # Patch was created and recorded in patches table
     patch_id = graph_after_patch.json().get("patches", [{}])[0].get("id")
     if not patch_id:
         from app.db.database import get_db_context

@@ -10,7 +10,7 @@ import {
   Lock,
   ArrowRight,
   ExternalLink,
-  Sparkles
+  Scale
 } from 'lucide-react';
 import { PersonaId, ProblemTask, PERSONA_TASKS, PERSONAS } from '../data/personas';
 
@@ -74,7 +74,7 @@ export const TaskSelector: React.FC<TaskSelectorProps> = ({
             Select Your Legal Objective ({persona.title})
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">
-            Choose what you need to solve. Only live, evidence-grounded capabilities are executable; forthcoming features are clearly transparent.
+            Choose what you need to solve. Supported tasks run through the adversarial analysis engine; planned capabilities are clearly marked.
           </p>
         </div>
       </div>
@@ -136,8 +136,8 @@ export const TaskSelector: React.FC<TaskSelectorProps> = ({
               {isAvailable && (
                 <div className="pt-2 mt-2 border-t border-slate-800/60 flex items-center justify-between text-[10px] text-slate-400">
                   <span className="text-indigo-400 font-medium flex items-center gap-1">
-                    <Sparkles className="w-3 h-3" />
-                    3-Agent Verified
+                    <Scale className="w-3 h-3" />
+                    Adversarial Courtroom
                   </span>
                   <span className="font-mono text-slate-400">{task.recommendedQueries.length} presets</span>
                 </div>

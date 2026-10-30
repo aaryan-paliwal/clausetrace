@@ -31,7 +31,31 @@ class AdversarialCourtroomEngine:
         self.gateway = gateway or MetaLlamaGateway()
         self.retriever = HybridGraphRetriever(db_path=db_path)
 
-    async def evaluate_query(self, workspace_id: str, query: str) -> CourtroomVerdict:
+    def _build_context_header(
+        self,
+        query: str,
+        factual_context: Optional[str] = None,
+        persona: Optional[str] = None,
+        task_id: Optional[str] = None,
+    ) -> str:
+        """Compose structured contextual header for adversarial agent evaluation."""
+        lines = [f"User Query / Dispute Premise: {query}"]
+        if persona:
+            lines.append(f"Client Context Persona: {persona.upper()}")
+        if task_id:
+            lines.append(f"Objective Task: {task_id}")
+        if factual_context and factual_context.strip():
+            lines.append(f"Factual / Case Background: {factual_context.strip()}")
+        return "\n".join(lines)
+
+    async def evaluate_query(
+        self,
+        workspace_id: str,
+        query: str,
+        factual_context: Optional[str] = None,
+        persona: Optional[str] = None,
+        task_id: Optional[str] = None,
+    ) -> CourtroomVerdict:
         """Run the full adversarial pipeline: retrieval -> advocate + skeptic -> adjudicator."""
         # 1. Retrieve top clauses + 1-hop deontic graph neighbors
         retrieved_clauses = self.retriever.retrieve(
@@ -45,25 +69,26 @@ class AdversarialCourtroomEngine:
         if not retrieved_clauses or self._is_completely_irrelevant(query, retrieved_clauses):
             return self._build_not_covered_verdict(query)
 
-        # Prepare evidence text
+        # Prepare evidence text and structured inquiry context
         evidence_text = self._format_evidence(retrieved_clauses)
+        context_header = self._build_context_header(query, factual_context, persona, task_id)
 
         # 2. Concurrently run The Advocate and The Skeptic
         advocate_task = self.gateway.generate_structured(
             system_prompt=ADVOCATE_AGENT_PROMPT,
-            user_prompt=f"Premise/Query: {query}\n\nRetrieved Evidence:\n{evidence_text}",
+            user_prompt=f"{context_header}\n\nRetrieved Evidence:\n{evidence_text}",
             schema_cls=AgentBrief,
         )
         skeptic_task = self.gateway.generate_structured(
             system_prompt=SKEPTIC_AGENT_PROMPT,
-            user_prompt=f"Premise/Query: {query}\n\nRetrieved Evidence:\n{evidence_text}",
+            user_prompt=f"{context_header}\n\nRetrieved Evidence:\n{evidence_text}",
             schema_cls=AgentBrief,
         )
         (advocate_brief, _), (skeptic_brief, _) = await asyncio.gather(advocate_task, skeptic_task)
 
         # 3. Presiding Adjudicator synthesizes final verdict
         adjudicator_prompt = (
-            f"User Query / Dispute Premise:\n{query}\n\n"
+            f"{context_header}\n\n"
             f"The Advocate's Affirmative Brief:\n{json.dumps(advocate_brief.model_dump(), indent=2)}\n\n"
             f"The Skeptic's Adversarial Cross-Examination:\n{json.dumps(skeptic_brief.model_dump(), indent=2)}\n\n"
             f"Primary Corpus Evidence:\n{evidence_text}"
@@ -86,6 +111,9 @@ class AdversarialCourtroomEngine:
         self,
         workspace_id: str,
         query: str,
+        factual_context: Optional[str] = None,
+        persona: Optional[str] = None,
+        task_id: Optional[str] = None,
     ) -> AsyncGenerator[str, None]:
         """Stream real-time SSE events for live Courtroom animation in the UI."""
         yield f"event: status\ndata: {json.dumps({'message': 'Retrieving top deontic clauses and 1-hop graph neighbors...'})}\n\n"
@@ -105,17 +133,18 @@ class AdversarialCourtroomEngine:
             return
 
         evidence_text = self._format_evidence(retrieved_clauses)
+        context_header = self._build_context_header(query, factual_context, persona, task_id)
 
         yield f"event: status\ndata: {json.dumps({'message': 'The Advocate and The Skeptic are preparing adversarial briefs...'})}\n\n"
 
         advocate_task = self.gateway.generate_structured(
             system_prompt=ADVOCATE_AGENT_PROMPT,
-            user_prompt=f"Premise/Query: {query}\n\nRetrieved Evidence:\n{evidence_text}",
+            user_prompt=f"{context_header}\n\nRetrieved Evidence:\n{evidence_text}",
             schema_cls=AgentBrief,
         )
         skeptic_task = self.gateway.generate_structured(
             system_prompt=SKEPTIC_AGENT_PROMPT,
-            user_prompt=f"Premise/Query: {query}\n\nRetrieved Evidence:\n{evidence_text}",
+            user_prompt=f"{context_header}\n\nRetrieved Evidence:\n{evidence_text}",
             schema_cls=AgentBrief,
         )
         (advocate_brief, _), (skeptic_brief, _) = await asyncio.gather(advocate_task, skeptic_task)
@@ -126,7 +155,7 @@ class AdversarialCourtroomEngine:
         yield f"event: status\ndata: {json.dumps({'message': 'Presiding Adjudicator is weighing briefs and rendering verdict...'})}\n\n"
 
         adjudicator_prompt = (
-            f"User Query / Dispute Premise:\n{query}\n\n"
+            f"{context_header}\n\n"
             f"The Advocate's Affirmative Brief:\n{json.dumps(advocate_brief.model_dump(), indent=2)}\n\n"
             f"The Skeptic's Adversarial Cross-Examination:\n{json.dumps(skeptic_brief.model_dump(), indent=2)}\n\n"
             f"Primary Corpus Evidence:\n{evidence_text}"
@@ -156,7 +185,6 @@ class AdversarialCourtroomEngine:
     def _is_completely_irrelevant(self, query: str, clauses: List[Dict[str, Any]]) -> bool:
         """Fail-safe relevance gate checking whether the query is wholly out of distribution."""
         q_lower = query.lower()
-        # Common unanswerable or out-of-distribution topics
         out_of_dist_tokens = [
             # Residential / campus life
             "pet", "parking", "swimming", "gym", "cafeteria", "crypto", "bitcoin",

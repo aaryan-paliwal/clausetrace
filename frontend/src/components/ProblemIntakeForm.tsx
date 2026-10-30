@@ -6,30 +6,34 @@ import {
   ArrowRight, 
   ShieldCheck, 
   Sparkles, 
-  HelpCircle,
-  AlertCircle,
-  FileSearch,
-  Database,
-  Loader2
+  AlertCircle, 
+  Database, 
+  Loader2,
+  FileCheck2,
+  Info
 } from 'lucide-react';
 import { PersonaId, ProblemTask, PERSONAS } from '../data/personas';
-import { Workspace } from '../api/client';
+import { Workspace, DocumentUploadResponse } from '../api/client';
 
 interface ProblemIntakeFormProps {
   personaId: PersonaId;
   task: ProblemTask;
   workspaces: Workspace[];
   activeWorkspaceId: string;
+  hasUserUploadedDocument: boolean;
   onSelectWorkspace: (id: string) => void;
-  onUploadDocument: (file: File) => Promise<void>;
+  onUploadDocument: (file: File) => Promise<DocumentUploadResponse>;
   onProceedToAnalysis: (query: string, customContext?: string) => void;
 }
+
+export type UploadStage = 'idle' | 'selected' | 'uploading' | 'parsed' | 'error';
 
 export const ProblemIntakeForm: React.FC<ProblemIntakeFormProps> = ({
   personaId,
   task,
   workspaces,
   activeWorkspaceId,
+  hasUserUploadedDocument,
   onSelectWorkspace,
   onUploadDocument,
   onProceedToAnalysis,
@@ -40,8 +44,10 @@ export const ProblemIntakeForm: React.FC<ProblemIntakeFormProps> = ({
   const [query, setQuery] = useState(task.suggestedPromptTemplate || '');
   const [contextNotes, setContextNotes] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadSuccess, setUploadSuccess] = useState(false);
+  
+  // Explicit upload lifecycle states
+  const [uploadStage, setUploadStage] = useState<UploadStage>('idle');
+  const [uploadResult, setUploadResult] = useState<DocumentUploadResponse | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   // Sync template if task changes
@@ -56,18 +62,26 @@ export const ProblemIntakeForm: React.FC<ProblemIntakeFormProps> = ({
     if (!file) return;
 
     setSelectedFile(file);
+    setUploadStage('selected');
     setUploadError(null);
-    setIsUploading(true);
+    setUploadResult(null);
 
+    // Progress into upload & indexing
+    setUploadStage('uploading');
     try {
-      await onUploadDocument(file);
-      setUploadSuccess(true);
+      const response = await onUploadDocument(file);
+      // Only set parsed/indexed when backend confirms success and returns clauses
+      if (response && response.status === 'success') {
+        setUploadResult(response);
+        setUploadStage('parsed');
+      } else {
+        throw new Error('Server received file but clause parsing could not be verified.');
+      }
     } catch (err) {
       console.error('Document intake upload failed:', err);
       setUploadError(err instanceof Error ? err.message : String(err));
-      setSelectedFile(null);
+      setUploadStage('error');
     } finally {
-      setIsUploading(false);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -89,18 +103,25 @@ export const ProblemIntakeForm: React.FC<ProblemIntakeFormProps> = ({
             Document & Legal Problem Intake
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">
-            Attach your agreement or select a pre-indexed corpus, specify your legal question, and enter context. No personal identifying information is stored.
+            Attach your agreement or choose a pre-loaded reference document set. Enter your question and any relevant factual background.
           </p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 bg-slate-900/60 border border-slate-800 rounded-2xl p-5 shadow-xl">
-        {/* Left Column (Col 1-5): Document Source & Workspace */}
+        {/* Left Column (Col 1-5): Document Source & Workspace Reference Material */}
         <div className="lg:col-span-5 space-y-4 pr-0 lg:pr-4 border-b lg:border-b-0 lg:border-r border-slate-800/80 pb-4 lg:pb-0">
           <div>
-            <label className="text-xs font-bold text-slate-200 block mb-1.5 flex items-center gap-1.5">
-              <Database className="w-3.5 h-3.5 text-indigo-400" />
-              Target Legal Workspace Corpus
+            <label className="text-xs font-bold text-slate-200 block mb-1.5 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <Database className="w-3.5 h-3.5 text-indigo-400" />
+                Active Document Collection
+              </span>
+              {hasUserUploadedDocument && (
+                <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded">
+                  Contains Your Uploads
+                </span>
+              )}
             </label>
             <select
               value={activeWorkspaceId}
@@ -109,20 +130,20 @@ export const ProblemIntakeForm: React.FC<ProblemIntakeFormProps> = ({
             >
               {workspaces.map((ws) => (
                 <option key={ws.id} value={ws.id}>
-                  {ws.name} ({ws.pack_name})
+                  {ws.name} ({ws.pack_name === 'startup_founder_legal' ? 'Commercial & Founder Agreements' : 'Institutional & Academic Policies'})
                 </option>
               ))}
             </select>
-            <p className="text-[10px] text-slate-400 mt-1">
-              Corpus includes pre-indexed clauses, deontic rules, and conflict matrices.
+            <p className="text-[11px] text-slate-400 mt-1.5 leading-relaxed">
+              A document collection groups related agreements and policies so the engine can check clauses across documents for inconsistencies and conflicting obligations.
             </p>
           </div>
 
-          {/* Document Upload Box */}
+          {/* Document Upload Box with verified lifecycle */}
           <div>
             <label className="text-xs font-bold text-slate-200 block mb-1.5 flex items-center gap-1.5">
               <Upload className="w-3.5 h-3.5 text-indigo-400" />
-              Upload Agreement / Document (Optional)
+              Upload an Agreement or Policy (.md, .txt, .pdf)
             </label>
 
             <input
@@ -134,61 +155,79 @@ export const ProblemIntakeForm: React.FC<ProblemIntakeFormProps> = ({
             />
 
             <div
-              onClick={() => !isUploading && fileInputRef.current?.click()}
+              onClick={() => uploadStage !== 'uploading' && fileInputRef.current?.click()}
               className={`p-4 rounded-xl border border-dashed transition-all cursor-pointer text-center flex flex-col items-center justify-center ${
-                uploadSuccess
+                uploadStage === 'parsed'
                   ? 'bg-emerald-950/20 border-emerald-500/40 text-emerald-300'
-                  : uploadError
+                  : uploadStage === 'uploading'
+                  ? 'bg-indigo-950/20 border-indigo-500/40 text-indigo-300'
+                  : uploadStage === 'error'
                   ? 'bg-rose-950/20 border-rose-500/40 text-rose-300'
                   : 'bg-slate-950/60 border-slate-700/80 hover:bg-slate-950 hover:border-indigo-500/50 text-slate-400'
               }`}
             >
-              {isUploading ? (
+              {uploadStage === 'uploading' ? (
                 <div className="py-2 flex flex-col items-center gap-2">
                   <Loader2 className="w-6 h-6 text-indigo-400 animate-spin" />
                   <span className="text-xs font-semibold text-slate-200">
-                    Parsing clauses & compiling deontic graph...
+                    Uploading & parsing clauses into document graph...
+                  </span>
+                  <span className="text-[10px] text-slate-400">
+                    File: {selectedFile?.name}
                   </span>
                 </div>
-              ) : uploadSuccess ? (
+              ) : uploadStage === 'parsed' && uploadResult ? (
                 <div className="py-1 flex flex-col items-center gap-1.5">
-                  <CheckCircle2 className="w-6 h-6 text-emerald-400" />
+                  <FileCheck2 className="w-6 h-6 text-emerald-400" />
                   <span className="text-xs font-bold text-slate-200">
-                    {selectedFile?.name || 'Document parsed successfully'}
+                    {uploadResult.title}
                   </span>
-                  <span className="text-[10px] text-emerald-400">
-                    Integrated into active workspace deontic graph.
+                  <span className="text-[10px] text-emerald-400 font-medium">
+                    Verified: {uploadResult.clauses_created} clauses parsed and added to active collection.
+                  </span>
+                  <span className="text-[10px] text-slate-400 underline mt-1">
+                    Click to upload another document
+                  </span>
+                </div>
+              ) : uploadStage === 'error' ? (
+                <div className="py-1 flex flex-col items-center gap-1.5">
+                  <AlertCircle className="w-6 h-6 text-rose-400" />
+                  <span className="text-xs font-bold text-rose-300">
+                    Upload or Processing Failed
+                  </span>
+                  <span className="text-[10px] text-slate-400">
+                    Click to try selecting the file again.
                   </span>
                 </div>
               ) : (
                 <div className="py-1 flex flex-col items-center gap-1.5">
                   <FileText className="w-6 h-6 text-slate-500 group-hover:text-indigo-400" />
                   <span className="text-xs font-bold text-slate-300">
-                    Attach .md, .txt, or .pdf
+                    Click to select agreement or policy
                   </span>
                   <span className="text-[10px] text-slate-400 max-w-xs">
-                    Exact character offsets are computed with zero external data sharing.
+                    Uploaded text is processed into numbered clauses for structural conflict analysis.
                   </span>
                 </div>
               )}
             </div>
 
             {uploadError && (
-              <p className="text-[11px] text-rose-400 mt-1 flex items-center gap-1">
-                <AlertCircle className="w-3 h-3" />
-                {uploadError}
+              <p className="text-[11px] text-rose-400 mt-1.5 flex items-start gap-1">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                <span>{uploadError}</span>
               </p>
             )}
           </div>
 
-          {/* Privacy & Grounding Guardrail Badge */}
+          {/* Transparent Scope Note */}
           <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800 text-[11px] text-slate-400 space-y-1">
             <div className="flex items-center gap-1.5 font-bold text-slate-300 text-xs">
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              Evidence-Grounded Legal Engine
+              <Info className="w-3.5 h-3.5 text-indigo-400" />
+              Scope of Analysis
             </div>
             <p className="leading-relaxed">
-              Every finding must cite exact clause spans. The engine never hallucinates rights outside the governing corpus.
+              ClauseTrace evaluates structural consistency, cross-clause collisions, and obligation gaps across uploaded documents and indexed reference agreements.
             </p>
           </div>
         </div>
@@ -199,7 +238,7 @@ export const ProblemIntakeForm: React.FC<ProblemIntakeFormProps> = ({
             <div className="space-y-3">
               <div>
                 <label className="text-xs font-bold text-slate-200 block mb-1.5 flex items-center justify-between">
-                  <span>Describe the Legal Premise or Conflict to Examine</span>
+                  <span>Describe the Legal Premise or Term to Examine</span>
                   <span className="text-[10px] font-normal text-slate-400">Required</span>
                 </label>
                 <textarea
@@ -216,7 +255,7 @@ export const ProblemIntakeForm: React.FC<ProblemIntakeFormProps> = ({
               {task.recommendedQueries.length > 0 && (
                 <div>
                   <span className="text-[11px] text-slate-400 block mb-1.5">
-                    Recommended queries for this task:
+                    Recommended inquiries for this task:
                   </span>
                   <div className="flex flex-wrap gap-1.5">
                     {task.recommendedQueries.map((rq, idx) => (
@@ -240,14 +279,14 @@ export const ProblemIntakeForm: React.FC<ProblemIntakeFormProps> = ({
               {/* Context Notes (Optional) */}
               <div>
                 <label className="text-xs font-bold text-slate-200 block mb-1 flex items-center justify-between">
-                  <span>Specific Factual Context / Role Details (Optional)</span>
+                  <span>Factual Background / Relevant Parties (Optional)</span>
                   <span className="text-[10px] font-normal text-slate-400">Contextualizes agent arguments</span>
                 </label>
                 <input
                   type="text"
                   value={contextNotes}
                   onChange={(e) => setContextNotes(e.target.value)}
-                  placeholder="e.g. Executive employee under 2024 offer schedule with claimed pre-existing open source repo"
+                  placeholder="e.g. Senior developer joined in Jan 2024 with existing open source contributions"
                   className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-sans"
                 />
               </div>
@@ -255,16 +294,21 @@ export const ProblemIntakeForm: React.FC<ProblemIntakeFormProps> = ({
 
             {/* Launch Action */}
             <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between">
-              <span className="text-[11px] text-slate-400 font-medium">
-                Launches into 3-Pane Adversarial Courtroom
-              </span>
+              <div className="flex flex-col">
+                <span className="text-[11px] font-medium text-slate-300">
+                  Runs 3-Agent Adversarial Examination
+                </span>
+                <span className="text-[10px] text-slate-400">
+                  Advocate, Skeptic & Adjudicator cross-examine retrieved clauses
+                </span>
+              </div>
 
               <button
                 type="submit"
                 disabled={!query.trim()}
                 className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 active:from-indigo-700 active:to-indigo-600 disabled:from-slate-800 disabled:to-slate-800 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-600/20 transition-all border border-indigo-400/30 cursor-pointer disabled:cursor-not-allowed"
               >
-                <span>Launch Courtroom Examination</span>
+                <span>Launch Examination</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>

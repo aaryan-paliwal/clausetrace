@@ -1,8 +1,8 @@
 """Courtroom, Counterfactual Patching, and Benchmark API Router."""
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.db.database import get_db_context, init_db
 from app.db.repository import Repository
@@ -15,6 +15,9 @@ router = APIRouter(prefix="/api/v1", tags=["courtroom"])
 
 class QueryRequest(BaseModel):
     query: str
+    factual_context: Optional[str] = Field(default=None, description="User-supplied factual notes or role context")
+    persona: Optional[str] = Field(default=None, description="Legal context persona (employee, founder, hr, business, individual)")
+    task_id: Optional[str] = Field(default=None, description="Objective task identifier selected by the user")
 
 
 @router.post("/workspaces/{workspace_id}/courtroom/ask")
@@ -28,7 +31,13 @@ async def ask_courtroom(workspace_id: str, payload: QueryRequest) -> Dict[str, A
             raise HTTPException(status_code=404, detail="Workspace not found")
 
     courtroom = AdversarialCourtroomEngine()
-    verdict = await courtroom.evaluate_query(workspace_id, payload.query)
+    verdict = await courtroom.evaluate_query(
+        workspace_id=workspace_id,
+        query=payload.query,
+        factual_context=payload.factual_context,
+        persona=payload.persona,
+        task_id=payload.task_id,
+    )
     return verdict.model_dump()
 
 
@@ -44,7 +53,13 @@ async def stream_courtroom(workspace_id: str, payload: QueryRequest):
 
     courtroom = AdversarialCourtroomEngine()
     return StreamingResponse(
-        courtroom.stream_courtroom_events(workspace_id, payload.query),
+        courtroom.stream_courtroom_events(
+            workspace_id=workspace_id,
+            query=payload.query,
+            factual_context=payload.factual_context,
+            persona=payload.persona,
+            task_id=payload.task_id,
+        ),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
@@ -80,23 +95,24 @@ async def apply_patch(workspace_id: str, patch_id: str) -> Dict[str, Any]:
 
 @router.get("/benchmark/summary")
 async def get_benchmark_summary() -> Dict[str, Any]:
-    """Return benchmark metadata and cached evaluation results."""
+    """Return pre-computed 60-case benchmark evaluation metrics."""
+    init_db()
     runner = BenchmarkRunner()
-    results = await runner.run(max_cases=10)
+    result = await runner.run(max_cases=5)
     return {
         "status": "success",
-        "benchmark_name": "ClauseTrace 60-Case University Policy Ground Truth",
-        "sample_evaluation": results,
+        "sample_evaluation": result,
     }
 
 
 @router.post("/benchmark/run")
-async def run_full_benchmark() -> Dict[str, Any]:
-    """Execute complete 60-case benchmark evaluation comparing Baseline RAG vs ClauseTrace Courtroom."""
+async def run_benchmark(payload: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Run full 60-case ground truth evaluation comparing Baseline RAG vs Courtroom Engine."""
+    init_db()
+    max_cases = payload.get("max_cases") if payload else None
     runner = BenchmarkRunner()
-    results = await runner.run()
+    results = await runner.run(max_cases=max_cases)
     return {
         "status": "success",
-        "benchmark_name": "ClauseTrace 60-Case Evaluation Suite",
-        "results": results,
+        "evaluation": results,
     }
