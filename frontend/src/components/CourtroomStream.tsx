@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Send,
   Mic,
@@ -22,6 +22,7 @@ interface CourtroomStreamProps {
   skepticBrief: AgentBrief | null;
   statusMessage: string | null;
   onCitationClick?: (clauseId: string) => void;
+  initialQuery?: string;
 }
 
 export const CourtroomStream: React.FC<CourtroomStreamProps> = ({
@@ -32,8 +33,15 @@ export const CourtroomStream: React.FC<CourtroomStreamProps> = ({
   skepticBrief,
   statusMessage,
   onCitationClick,
+  initialQuery,
 }) => {
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(initialQuery || '');
+
+  useEffect(() => {
+    if (initialQuery) {
+      setQuery(initialQuery);
+    }
+  }, [initialQuery]);
 
   const sampleQueries = [
     'Can the company immediately terminate employment without notice or cure?',
@@ -111,7 +119,7 @@ export const CourtroomStream: React.FC<CourtroomStreamProps> = ({
               type="button"
               onClick={handleSimulateVoice}
               title="Sample random legal premise"
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-400 transition-colors"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-400 transition-colors cursor-pointer"
             >
               <Mic className="w-4 h-4" />
             </button>
@@ -120,7 +128,7 @@ export const CourtroomStream: React.FC<CourtroomStreamProps> = ({
           <button
             type="submit"
             disabled={!query.trim() || isLoading}
-            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 text-white text-xs font-semibold rounded-xl shadow-lg shadow-indigo-600/20 transition-all border border-indigo-400/30"
+            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 text-white text-xs font-semibold rounded-xl shadow-lg shadow-indigo-600/20 transition-all border border-indigo-400/30 cursor-pointer disabled:cursor-not-allowed"
           >
             {isLoading ? (
               <>
@@ -138,7 +146,7 @@ export const CourtroomStream: React.FC<CourtroomStreamProps> = ({
 
         {/* Query Presets Chips */}
         <div className="flex items-center gap-1.5 mt-2.5 overflow-x-auto pb-1 text-[11px] text-slate-400">
-          <span className="shrink-0 text-slate-500">Presets:</span>
+          <span className="shrink-0 text-slate-500 font-medium">Presets:</span>
           {sampleQueries.slice(0, 3).map((sq, idx) => (
             <button
               key={idx}
@@ -147,7 +155,7 @@ export const CourtroomStream: React.FC<CourtroomStreamProps> = ({
                 setQuery(sq);
                 onAsk(sq);
               }}
-              className="shrink-0 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 px-2.5 py-1 rounded-lg text-slate-300 transition-all truncate max-w-xs"
+              className="shrink-0 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 px-2.5 py-1 rounded-lg text-slate-300 transition-all truncate max-w-xs cursor-pointer"
             >
               {sq}
             </button>
@@ -220,7 +228,7 @@ export const CourtroomStream: React.FC<CourtroomStreamProps> = ({
                     key={idx}
                     type="button"
                     onClick={() => onCitationClick && onCitationClick(cite.clause_id)}
-                    className="text-[11px] font-mono bg-slate-900 hover:bg-indigo-950/60 text-slate-300 hover:text-indigo-300 border border-slate-700 hover:border-indigo-500/50 px-2 py-0.5 rounded transition-all"
+                    className="text-[11px] font-mono bg-slate-900 hover:bg-indigo-950/60 text-slate-300 hover:text-indigo-300 border border-slate-700 hover:border-indigo-500/50 px-2 py-0.5 rounded transition-all cursor-pointer"
                   >
                     §{cite.section_number} ({cite.doc_title.slice(0, 16)}...)
                   </button>
@@ -322,4 +330,3 @@ export const CourtroomStream: React.FC<CourtroomStreamProps> = ({
     </div>
   );
 };
-

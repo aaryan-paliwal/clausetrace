@@ -1,5 +1,16 @@
 import React, { useRef, useState } from 'react';
-import { ShieldCheck, BarChart3, Database, Cpu, Upload, Loader2, Check } from 'lucide-react';
+import { 
+  ShieldCheck, 
+  BarChart3, 
+  Database, 
+  Cpu, 
+  Upload, 
+  Loader2, 
+  Check, 
+  Layers, 
+  LayoutDashboard,
+  Compass
+} from 'lucide-react';
 import { Workspace } from '../api/client';
 
 interface NavbarProps {
@@ -8,6 +19,8 @@ interface NavbarProps {
   onSelectWorkspace: (id: string) => void;
   onOpenBenchmark: () => void;
   onUploadDocument: (file: File) => Promise<void>;
+  currentView: 'entry' | 'workspace';
+  onToggleView: (view: 'entry' | 'workspace') => void;
   metrics?: {
     active_conflicts: number;
     critical_count: number;
@@ -21,6 +34,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSelectWorkspace,
   onOpenBenchmark,
   onUploadDocument,
+  currentView,
+  onToggleView,
   metrics,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -50,8 +65,12 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <header className="h-16 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-40">
       <div className="flex items-center space-x-6">
-        <div className="flex items-center space-x-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-sky-400 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+        <div 
+          onClick={() => onToggleView('entry')}
+          className="flex items-center space-x-3 cursor-pointer group"
+          title="Return to Product Entry Dashboard"
+        >
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-sky-400 flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-transform">
             <ShieldCheck className="w-5 h-5 text-white" />
           </div>
           <div>
@@ -67,8 +86,36 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         </div>
 
+        {/* View Switcher Pills */}
+        <div className="hidden sm:flex items-center bg-slate-900/90 border border-slate-800 p-0.5 rounded-xl text-xs font-semibold">
+          <button
+            type="button"
+            onClick={() => onToggleView('entry')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
+              currentView === 'entry'
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Compass className="w-3.5 h-3.5" />
+            <span>Product Entry</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => onToggleView('workspace')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
+              currentView === 'workspace'
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5" />
+            <span>3-Pane Workspace</span>
+          </button>
+        </div>
+
         {/* Workspace Selector */}
-        <div className="flex items-center space-x-2 pl-4 border-l border-slate-800">
+        <div className="hidden md:flex items-center space-x-2 pl-4 border-l border-slate-800">
           <Database className="w-4 h-4 text-slate-400" />
           <select
             value={activeWorkspaceId}
@@ -121,7 +168,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         <button
           onClick={() => fileInputRef.current?.click()}
           disabled={isUploading}
-          className="flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-slate-200 hover:text-white text-xs font-semibold border border-slate-700 hover:border-slate-600 transition-all shadow-sm"
+          className="flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-slate-200 hover:text-white text-xs font-semibold border border-slate-700 hover:border-slate-600 transition-all shadow-sm cursor-pointer"
           title="Upload .md, .txt, or .pdf to parse clauses and re-compile deontic graph"
         >
           {isUploading ? (
@@ -137,7 +184,8 @@ export const Navbar: React.FC<NavbarProps> = ({
           ) : (
             <>
               <Upload className="w-4 h-4 text-slate-300" />
-              <span>Upload Document</span>
+              <span className="hidden sm:inline">Upload Document</span>
+              <span className="sm:hidden">Upload</span>
             </>
           )}
         </button>
@@ -145,10 +193,11 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Benchmark Trigger Button */}
         <button
           onClick={onOpenBenchmark}
-          className="flex items-center space-x-2 px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white text-xs font-semibold shadow-md shadow-indigo-600/20 transition-all border border-indigo-400/30"
+          className="flex items-center space-x-2 px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white text-xs font-semibold shadow-md shadow-indigo-600/20 transition-all border border-indigo-400/30 cursor-pointer"
         >
           <BarChart3 className="w-4 h-4" />
-          <span>60-Case Benchmark</span>
+          <span className="hidden sm:inline">60-Case Benchmark</span>
+          <span className="sm:hidden">Benchmark</span>
         </button>
       </div>
     </header>

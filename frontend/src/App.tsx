@@ -11,6 +11,7 @@ import {
   BenchmarkMetrics,
 } from './api/client';
 import { Navbar } from './components/Navbar';
+import { UnifiedEntryView } from './components/UnifiedEntryView';
 import { ConflictGraphMatrix } from './components/ConflictGraphMatrix';
 import { CourtroomStream } from './components/CourtroomStream';
 import { DualClauseViewer } from './components/DualClauseViewer';
@@ -18,6 +19,9 @@ import { PatchSandboxModal } from './components/PatchSandboxModal';
 import { BenchmarkModal } from './components/BenchmarkModal';
 
 export const App: React.FC = () => {
+  // Navigation mode: 'entry' (Product Landing & Intake) vs 'workspace' (3-Pane Analysis Engine)
+  const [currentView, setCurrentView] = useState<'entry' | 'workspace'>('entry');
+
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string>('ws_startup_legal');
   const [graph, setGraph] = useState<WorkspaceGraph | null>(null);
@@ -35,6 +39,7 @@ export const App: React.FC = () => {
   const [advocateBrief, setAdvocateBrief] = useState<AgentBrief | null>(null);
   const [skepticBrief, setSkepticBrief] = useState<AgentBrief | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [activeQuery, setActiveQuery] = useState<string>('');
 
   // Patch sandbox modal state
   const [isPatchModalOpen, setIsPatchModalOpen] = useState<boolean>(false);
@@ -162,6 +167,7 @@ export const App: React.FC = () => {
 
   // Handler for asking courtroom via SSE stream
   const handleAskCourtroom = (query: string) => {
+    setActiveQuery(query);
     setIsAdjudicating(true);
     setVerdict(null);
     setAdvocateBrief(null);
@@ -213,6 +219,14 @@ export const App: React.FC = () => {
     }
   };
 
+  // Handler for proceeding from Product Entry to Courtroom Workspace
+  const handleProceedToAnalysis = (query: string, customContext?: string) => {
+    setCurrentView('workspace');
+    setActiveQuery(query);
+    // Automatically trigger courtroom query execution in the workspace
+    handleAskCourtroom(query);
+  };
+
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-950 font-sans text-slate-100">
       {/* Top Navbar */}
@@ -222,46 +236,62 @@ export const App: React.FC = () => {
         onSelectWorkspace={setActiveWorkspaceId}
         onOpenBenchmark={() => setIsBenchmarkModalOpen(true)}
         onUploadDocument={handleUploadDocument}
+        currentView={currentView}
+        onToggleView={setCurrentView}
         metrics={graph?.summary_metrics}
       />
 
-      {/* 3-Pane Responsive Layout */}
-      <main className="flex-1 grid grid-cols-12 overflow-hidden">
-        {/* Left Pane (Col 1-3): Proactive Conflict Matrix */}
-        <div className="col-span-12 md:col-span-4 lg:col-span-3 h-full overflow-hidden">
-          <ConflictGraphMatrix
-            conflicts={graph?.conflicts || []}
-            clauses={graph?.clauses || []}
-            selectedConflictId={selectedConflict?.id || null}
-            onSelectConflict={handleSelectConflict}
-            onTriggerPatchSandbox={handleTriggerPatchSandbox}
-            isLoading={isLoadingGraph}
-          />
-        </div>
+      {/* Main View Area */}
+      {currentView === 'entry' ? (
+        <UnifiedEntryView
+          workspaces={workspaces}
+          activeWorkspaceId={activeWorkspaceId}
+          onSelectWorkspace={setActiveWorkspaceId}
+          onUploadDocument={handleUploadDocument}
+          onProceedToAnalysis={handleProceedToAnalysis}
+          onOpenBenchmark={() => setIsBenchmarkModalOpen(true)}
+          onDirectToWorkspace={() => setCurrentView('workspace')}
+        />
+      ) : (
+        /* 3-Pane Responsive Layout */
+        <main className="flex-1 grid grid-cols-12 overflow-hidden">
+          {/* Left Pane (Col 1-3): Proactive Conflict Matrix */}
+          <div className="col-span-12 md:col-span-4 lg:col-span-3 h-full overflow-hidden">
+            <ConflictGraphMatrix
+              conflicts={graph?.conflicts || []}
+              clauses={graph?.clauses || []}
+              selectedConflictId={selectedConflict?.id || null}
+              onSelectConflict={handleSelectConflict}
+              onTriggerPatchSandbox={handleTriggerPatchSandbox}
+              isLoading={isLoadingGraph}
+            />
+          </div>
 
-        {/* Center Pane (Col 4-8): 3-Agent Adversarial Courtroom Console */}
-        <div className="col-span-12 md:col-span-8 lg:col-span-5 h-full overflow-hidden border-r border-slate-800">
-          <CourtroomStream
-            onAsk={handleAskCourtroom}
-            isLoading={isAdjudicating}
-            verdict={verdict}
-            advocateBrief={advocateBrief}
-            skepticBrief={skepticBrief}
-            statusMessage={statusMessage}
-            onCitationClick={handleCitationClick}
-          />
-        </div>
+          {/* Center Pane (Col 4-8): 3-Agent Adversarial Courtroom Console */}
+          <div className="col-span-12 md:col-span-8 lg:col-span-5 h-full overflow-hidden border-r border-slate-800">
+            <CourtroomStream
+              onAsk={handleAskCourtroom}
+              isLoading={isAdjudicating}
+              verdict={verdict}
+              advocateBrief={advocateBrief}
+              skepticBrief={skepticBrief}
+              statusMessage={statusMessage}
+              onCitationClick={handleCitationClick}
+              initialQuery={activeQuery}
+            />
+          </div>
 
-        {/* Right Pane (Col 9-12): Synchronized Dual Clause Viewer */}
-        <div className="hidden lg:block lg:col-span-4 h-full overflow-hidden">
-          <DualClauseViewer
-            documents={graph?.documents || []}
-            clauseA={clauseA}
-            clauseB={clauseB}
-            highlightClauseId={highlightClauseId}
-          />
-        </div>
-      </main>
+          {/* Right Pane (Col 9-12): Synchronized Dual Clause Viewer */}
+          <div className="hidden lg:block lg:col-span-4 h-full overflow-hidden">
+            <DualClauseViewer
+              documents={graph?.documents || []}
+              clauseA={clauseA}
+              clauseB={clauseB}
+              highlightClauseId={highlightClauseId}
+            />
+          </div>
+        </main>
+      )}
 
       {/* Modals */}
       <PatchSandboxModal
