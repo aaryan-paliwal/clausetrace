@@ -33,14 +33,15 @@ class Repository:
         title: str,
         filename: str,
         raw_text: str,
+        content_hash: Optional[str] = None,
         doc_type: str = "contract",
         authority_rank: int = 1,
     ) -> Dict[str, Any]:
         query = """
-        INSERT INTO documents (id, workspace_id, title, filename, doc_type, authority_rank, raw_text)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO documents (id, workspace_id, title, filename, content_hash, doc_type, authority_rank, raw_text)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """
-        self.conn.execute(query, (doc_id, workspace_id, title, filename, doc_type, authority_rank, raw_text))
+        self.conn.execute(query, (doc_id, workspace_id, title, filename, content_hash, doc_type, authority_rank, raw_text))
         return self.get_document(doc_id)
 
     def get_document(self, doc_id: str) -> Optional[Dict[str, Any]]:
@@ -50,6 +51,11 @@ class Repository:
 
     def find_document_by_filename(self, workspace_id: str, filename: str) -> Optional[Dict[str, Any]]:
         cursor = self.conn.execute("SELECT * FROM documents WHERE workspace_id = ? AND filename = ?", (workspace_id, filename))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+    def find_document_by_content_hash(self, workspace_id: str, content_hash: str) -> Optional[Dict[str, Any]]:
+        cursor = self.conn.execute("SELECT * FROM documents WHERE workspace_id = ? AND content_hash = ?", (workspace_id, content_hash))
         row = cursor.fetchone()
         return dict(row) if row else None
 

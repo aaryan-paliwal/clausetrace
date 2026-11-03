@@ -58,7 +58,7 @@ def test_retrieval_context_infusion_and_observability():
     assert "What is the termination notice period?" in q_with_facts
     assert "Executive employment agreement clause 4 addendum" in q_with_facts
 
-    # Test retrieval execution preserves observability
+    # Test retrieval execution preserves observability while masking raw context to protect sensitive content
     client.get("/api/v1/workspaces")
     results = retriever.retrieve(
         workspace_id="ws_startup_legal",
@@ -70,9 +70,10 @@ def test_retrieval_context_infusion_and_observability():
     assert len(results) > 0
     debug = retriever.last_retrieval_debug
     assert debug is not None
-    assert debug["original_query"] == "termination notice"
-    assert "30 days cure period" in debug["effective_query"]
+    assert debug["retrieval_strategy"] == "hybrid_bm25_dense_hash"
+    assert debug["context_applied"] is True
     assert debug["persona"] == "founder"
+    assert debug["task_id"] == "fnd_review"
     assert debug["task_id"] == "fnd_review"
 
 
@@ -81,6 +82,21 @@ async def test_context_propagation_to_agents():
     """Verify persona, task_id, and factual context reach Advocate, Skeptic, and Adjudicator prompts."""
     # Ensure startup legal is seeded
     client.get("/api/v1/workspaces")
+
+    # Fetch a valid doc and clause to back the direct document evidence finding
+    from app.db.database import get_db_context
+    from app.db.repository import Repository
+    with get_db_context() as conn:
+        repo = Repository(conn)
+        docs = repo.list_documents("ws_startup_legal")
+        doc = docs[0]
+        clauses = repo.list_clauses(doc_id=doc["id"])
+        clause = clauses[0]
+
+    raw_text = doc["raw_text"]
+    char_start = clause["char_start"]
+    char_end = min(clause["char_end"], char_start + 40)
+    exact_quote = raw_text[char_start:char_end]
 
     courtroom = AdversarialCourtroomEngine()
 
@@ -115,6 +131,11 @@ async def test_context_propagation_to_agents():
             DocumentFinding(
                 category=FindingCategory.DIRECT_DOCUMENT_EVIDENCE,
                 statement="Section 4.1 requires 30 days notice.",
+                doc_id=doc["id"],
+                clause_id=clause["id"],
+                char_start=char_start,
+                char_end=char_end,
+                evidence_quote=exact_quote,
             ),
             DocumentFinding(
                 category=FindingCategory.POTENTIAL_CONFLICT,

@@ -1,11 +1,28 @@
 """Tests for document upload integrity, workspace isolation, and deduplication."""
 import io
+import os
+import tempfile
 import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.db.database import init_db
+from app.config import settings
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def override_db():
+    fd, path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    original_path = settings.DATABASE_PATH
+    settings.DATABASE_PATH = path
+    init_db(path)
+    yield path
+    settings.DATABASE_PATH = original_path
+    if os.path.exists(path):
+        os.remove(path)
 
 
 def test_upload_document_belongs_to_selected_workspace():
@@ -78,40 +95,73 @@ def test_failed_upload_does_not_produce_false_success():
     assert "no readable text" in res.json()["detail"].lower()
 
 
-def test_repeated_upload_deduplication():
-    """Verify repeated upload of the same document filename updates rather than duplicates records."""
+def test_content_hash_deduplication_and_workspace_isolation():
+    """
+    Verify content-hash deduplication requirements:
+    - Same workspace and same content: identify duplicate (replaces without duplicating).
+    - Same workspace and different content: retain both documents (even if same filename).
+    - Different workspaces: retain independent copies.
+    """
     client.get("/api/v1/workspaces")
 
-    content_v1 = b"""# Non Disclosure Agreement
+    content_a = b"""# Non Disclosure Agreement Version A
 Section 1.1 Term
-The NDA lasts 2 years.
+The NDA lasts 2 years for commercial discussions.
 """
-    file_payload_1 = ("nda.md", io.BytesIO(content_v1), "text/markdown")
+    file_payload_1 = ("nda.md", io.BytesIO(content_a), "text/markdown")
     res1 = client.post(
         "/api/v1/workspaces/ws_startup_legal/documents",
         files={"file": file_payload_1},
     )
     assert res1.status_code == 200
+    doc_1_id = res1.json()["doc_id"]
 
-    graph_mid = client.get("/api/v1/workspaces/ws_startup_legal/graph").json()
-    nda_docs_mid = [d for d in graph_mid["documents"] if d["filename"] == "nda.md"]
-    assert len(nda_docs_mid) == 1
-    mid_doc_count = graph_mid["summary_metrics"]["total_documents"]
-
-    # Re-upload same filename with amended content
-    content_v2 = b"""# Non Disclosure Agreement
-Section 1.1 Term
-The NDA lasts 5 years.
-"""
-    file_payload_2 = ("nda.md", io.BytesIO(content_v2), "text/markdown")
-    res2 = client.post(
+    # 1. Same workspace and SAME content -> replaces previous document, count stays same
+    file_payload_same = ("nda_copy.md", io.BytesIO(content_a), "text/markdown")
+    res_same = client.post(
         "/api/v1/workspaces/ws_startup_legal/documents",
-        files={"file": file_payload_2},
+        files={"file": file_payload_same},
     )
-    assert res2.status_code == 200
+    assert res_same.status_code == 200
 
-    graph_final = client.get("/api/v1/workspaces/ws_startup_legal/graph").json()
-    nda_docs_final = [d for d in graph_final["documents"] if d["filename"] == "nda.md"]
-    assert len(nda_docs_final) == 1
-    # Total documents count should not increase on replacement
-    assert graph_final["summary_metrics"]["total_documents"] == mid_doc_count
+    graph_after_same = client.get("/api/v1/workspaces/ws_startup_legal/graph").json()
+    # The old doc should have been replaced
+    assert not any(d["id"] == doc_1_id for d in graph_after_same["documents"])
+    assert any(d["id"] == res_same.json()["doc_id"] for d in graph_after_same["documents"])
+
+    count_after_same = graph_after_same["summary_metrics"]["total_documents"]
+
+    # 2. Same workspace and DIFFERENT content -> retain both documents (even with same filename 'nda.md')
+    content_b = b"""# Non Disclosure Agreement Version B
+Section 1.1 Term
+The NDA lasts 10 years with extended patent disclosures.
+"""
+    file_payload_diff = ("nda.md", io.BytesIO(content_b), "text/markdown")
+    res_diff = client.post(
+        "/api/v1/workspaces/ws_startup_legal/documents",
+        files={"file": file_payload_diff},
+    )
+    assert res_diff.status_code == 200
+
+    graph_after_diff = client.get("/api/v1/workspaces/ws_startup_legal/graph").json()
+    assert graph_after_diff["summary_metrics"]["total_documents"] == count_after_same + 1
+    # Both documents exist in ws_startup_legal
+    doc_ids_startup = [d["id"] for d in graph_after_diff["documents"]]
+    assert res_same.json()["doc_id"] in doc_ids_startup
+    assert res_diff.json()["doc_id"] in doc_ids_startup
+
+    # 3. Different workspace -> retain independent copy of content_a
+    file_payload_other_ws = ("nda.md", io.BytesIO(content_a), "text/markdown")
+    res_other = client.post(
+        "/api/v1/workspaces/ws_university_policy/documents",
+        files={"file": file_payload_other_ws},
+    )
+    assert res_other.status_code == 200
+    other_doc_id = res_other.json()["doc_id"]
+
+    graph_uni = client.get("/api/v1/workspaces/ws_university_policy/graph").json()
+    doc_ids_uni = [d["id"] for d in graph_uni["documents"]]
+    assert other_doc_id in doc_ids_uni
+    # ws_startup_legal still has its documents intact
+    graph_startup_final = client.get("/api/v1/workspaces/ws_startup_legal/graph").json()
+    assert res_same.json()["doc_id"] in [d["id"] for d in graph_startup_final["documents"]]

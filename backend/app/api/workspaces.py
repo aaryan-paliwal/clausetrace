@@ -1,4 +1,5 @@
 """Workspaces and deontic graph API router."""
+import hashlib
 import uuid
 from typing import Any, Dict, List
 from fastapi import APIRouter, File, HTTPException, UploadFile
@@ -78,8 +79,11 @@ async def upload_document(
         if not raw_text.strip():
             raise HTTPException(status_code=400, detail="Uploaded file contains no readable text")
 
-        # Handle repeated uploads by replacing existing document if duplicate filename in same workspace
-        existing_doc = repo.find_document_by_filename(workspace_id, file.filename)
+        # Workspace-scoped content hash for duplicate detection
+        content_hash = hashlib.sha256(raw_text.strip().encode("utf-8")).hexdigest()
+
+        # Same workspace and same content -> replace existing identical document cleanly
+        existing_doc = repo.find_document_by_content_hash(workspace_id, content_hash)
         if existing_doc:
             repo.delete_document(existing_doc["id"])
 
@@ -91,6 +95,7 @@ async def upload_document(
             title=title,
             filename=file.filename,
             raw_text=raw_text,
+            content_hash=content_hash,
             doc_type="contract",
         )
 

@@ -178,9 +178,9 @@ class HybridGraphRetriever:
             if not clauses:
                 self.last_retrieval_debug = {
                     "workspace_id": workspace_id,
-                    "original_query": query,
-                    "effective_query": query,
-                    "factual_context": factual_context,
+                    "retrieval_strategy": "hybrid_bm25_dense_hash",
+                    "graph_expansion_enabled": enable_graph_expansion,
+                    "context_applied": bool(factual_context and factual_context.strip()),
                     "persona": persona,
                     "task_id": task_id,
                     "clauses_count": 0,
@@ -228,12 +228,14 @@ class HybridGraphRetriever:
             scored_clauses.sort(key=lambda x: x["score"], reverse=True)
             top_results = scored_clauses[:top_k]
 
-            # Save observable debug state for introspection and observability
+            # Save observable debug state for introspection and observability.
+            # Mask raw factual context and query text to protect sensitive user PII from being leaked via shared SSE diagnostics
+            context_applied = bool(factual_context and factual_context.strip())
             self.last_retrieval_debug = {
                 "workspace_id": workspace_id,
-                "original_query": query,
-                "effective_query": effective_query,
-                "factual_context": factual_context,
+                "retrieval_strategy": "hybrid_bm25_dense_hash",
+                "graph_expansion_enabled": enable_graph_expansion,
+                "context_applied": context_applied,
                 "persona": persona,
                 "task_id": task_id,
                 "clauses_count": len(clauses),

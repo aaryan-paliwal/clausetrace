@@ -17,6 +17,8 @@ from app.llm.schemas import (
     AgentBrief,
     CitationSpan,
     CourtroomVerdict,
+    DocumentFinding,
+    FindingCategory,
     VerdictState,
 )
 
@@ -107,6 +109,7 @@ class AdversarialCourtroomEngine:
         verdict.advocate_brief = advocate_brief
         verdict.skeptic_brief = skeptic_brief
         verdict.verified_citations = self._align_and_verify_citations(workspace_id, retrieved_clauses)
+        verdict.findings = self.validate_and_sanitize_findings(workspace_id, verdict.findings)
 
         return verdict
 
@@ -177,6 +180,7 @@ class AdversarialCourtroomEngine:
         verdict.advocate_brief = advocate_brief
         verdict.skeptic_brief = skeptic_brief
         verdict.verified_citations = self._align_and_verify_citations(workspace_id, retrieved_clauses)
+        verdict.findings = self.validate_and_sanitize_findings(workspace_id, verdict.findings)
 
         yield f"event: verdict\ndata: {json.dumps(verdict.model_dump())}\n\n"
 
@@ -258,6 +262,12 @@ class AdversarialCourtroomEngine:
             ),
             missing_prerequisites=["Relevant policy or contractual covenant"],
             verified_citations=[],
+            findings=[
+                DocumentFinding(
+                    category=FindingCategory.MISSING_INFORMATION,
+                    statement="The inquiry premise is not covered by any document or clause in the governing corpus.",
+                )
+            ],
         )
 
     def _align_and_verify_citations(
@@ -286,3 +296,146 @@ class AdversarialCourtroomEngine:
                 )
             )
         return citations
+
+    def validate_and_sanitize_findings(
+        self,
+        workspace_id: str,
+        findings: List[DocumentFinding],
+    ) -> List[DocumentFinding]:
+        """
+        Deterministic validation of findings against ground truth documents:
+        - The document ID must exist in the workspace.
+        - The clause ID must belong to the referenced document.
+        - Character offsets must be within document text bounds.
+        - The quoted evidence must exactly match the document substring at those offsets.
+        - If invalid, missing, or mismatched, finding CANNOT be DIRECT_DOCUMENT_EVIDENCE;
+          it is demoted to UNSUPPORTED_CONCLUSION.
+        - Unsupported conclusions remain explicitly classified as UNSUPPORTED_CONCLUSION.
+        """
+        if not findings:
+            return []
+
+        with get_db_context(self.db_path) as conn:
+            repo = Repository(conn)
+            docs = {d["id"]: d for d in repo.list_documents(workspace_id=workspace_id)}
+            clauses = {c["id"]: c for c in repo.list_clauses(workspace_id=workspace_id)}
+
+        sanitized_findings: List[DocumentFinding] = []
+
+        for finding in findings:
+            # Preserve explicit unsupported conclusions or missing info
+            if finding.category == FindingCategory.UNSUPPORTED_CONCLUSION:
+                sanitized_findings.append(finding)
+                continue
+
+            if finding.category == FindingCategory.MISSING_INFORMATION:
+                sanitized_findings.append(finding)
+                continue
+
+            # For DIRECT_DOCUMENT_EVIDENCE, enforce strict verification
+            if finding.category == FindingCategory.DIRECT_DOCUMENT_EVIDENCE:
+                # 1. Document ID must exist in the workspace
+                if not finding.doc_id or finding.doc_id not in docs:
+                    sanitized_findings.append(
+                        DocumentFinding(
+                            category=FindingCategory.UNSUPPORTED_CONCLUSION,
+                            statement=finding.statement,
+                            doc_id=finding.doc_id,
+                            clause_id=finding.clause_id,
+                        )
+                    )
+                    continue
+
+                parent_doc = docs[finding.doc_id]
+
+                # 2. Clause ID must belong to referenced document
+                if not finding.clause_id or finding.clause_id not in clauses:
+                    sanitized_findings.append(
+                        DocumentFinding(
+                            category=FindingCategory.UNSUPPORTED_CONCLUSION,
+                            statement=finding.statement,
+                            doc_id=finding.doc_id,
+                            clause_id=finding.clause_id,
+                        )
+                    )
+                    continue
+
+                clause = clauses[finding.clause_id]
+                if clause.get("doc_id") != finding.doc_id:
+                    sanitized_findings.append(
+                        DocumentFinding(
+                            category=FindingCategory.UNSUPPORTED_CONCLUSION,
+                            statement=finding.statement,
+                            doc_id=finding.doc_id,
+                            clause_id=finding.clause_id,
+                        )
+                    )
+                    continue
+
+                # 3. Offsets within bounds
+                raw_text = parent_doc.get("raw_text", "")
+                if (
+                    finding.char_start is None
+                    or finding.char_end is None
+                    or finding.char_start < 0
+                    or finding.char_end > len(raw_text)
+                    or finding.char_start >= finding.char_end
+                ):
+                    sanitized_findings.append(
+                        DocumentFinding(
+                            category=FindingCategory.UNSUPPORTED_CONCLUSION,
+                            statement=finding.statement,
+                            doc_id=finding.doc_id,
+                            clause_id=finding.clause_id,
+                        )
+                    )
+                    continue
+
+                # 4. Quoted evidence exact substring match
+                expected_substring = raw_text[finding.char_start:finding.char_end]
+                if not finding.evidence_quote or finding.evidence_quote != expected_substring:
+                    sanitized_findings.append(
+                        DocumentFinding(
+                            category=FindingCategory.UNSUPPORTED_CONCLUSION,
+                            statement=finding.statement,
+                            doc_id=finding.doc_id,
+                            clause_id=finding.clause_id,
+                        )
+                    )
+                    continue
+
+                # Valid direct document evidence
+                sanitized_findings.append(
+                    DocumentFinding(
+                        category=FindingCategory.DIRECT_DOCUMENT_EVIDENCE,
+                        statement=finding.statement,
+                        clause_id=finding.clause_id,
+                        doc_id=finding.doc_id,
+                        doc_title=parent_doc.get("title", finding.doc_title),
+                        section_number=clause.get("section_number", finding.section_number),
+                        char_start=finding.char_start,
+                        char_end=finding.char_end,
+                        evidence_quote=finding.evidence_quote,
+                    )
+                )
+            else:
+                # INFERENCE_FROM_EVIDENCE or POTENTIAL_CONFLICT
+                # Validate doc_id and clause_id if provided
+                if finding.doc_id and finding.doc_id not in docs:
+                    sanitized_findings.append(
+                        DocumentFinding(
+                            category=FindingCategory.UNSUPPORTED_CONCLUSION,
+                            statement=finding.statement,
+                        )
+                    )
+                elif finding.clause_id and (finding.clause_id not in clauses or (finding.doc_id and clauses[finding.clause_id].get("doc_id") != finding.doc_id)):
+                    sanitized_findings.append(
+                        DocumentFinding(
+                            category=FindingCategory.UNSUPPORTED_CONCLUSION,
+                            statement=finding.statement,
+                        )
+                    )
+                else:
+                    sanitized_findings.append(finding)
+
+        return sanitized_findings

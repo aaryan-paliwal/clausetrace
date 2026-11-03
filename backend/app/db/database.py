@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS documents (
     workspace_id TEXT NOT NULL,
     title TEXT NOT NULL,
     filename TEXT NOT NULL,
+    content_hash TEXT,
     doc_type TEXT DEFAULT 'contract',
     authority_rank INTEGER DEFAULT 1,
     raw_text TEXT NOT NULL,
@@ -133,3 +134,8 @@ def init_db(db_path: str = None) -> None:
     """Initialize database tables."""
     with get_db_context(db_path) as conn:
         conn.executescript(SCHEMA_SQL)
+        # Migrate existing documents table to include content_hash if missing
+        try:
+            conn.execute("ALTER TABLE documents ADD COLUMN content_hash TEXT")
+        except sqlite3.OperationalError:
+            pass  # column already exists

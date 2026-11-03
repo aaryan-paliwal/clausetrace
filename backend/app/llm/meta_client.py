@@ -411,28 +411,12 @@ class MetaLlamaGateway:
         )
 
         # Generate structured document findings distinguishing evidence, inference, and conflict
-        findings = [
-            DocumentFinding(
-                category=FindingCategory.DIRECT_DOCUMENT_EVIDENCE,
-                statement="Governing document sets explicit terms and conditions.",
-                clause_id="clause_001",
-                doc_id="doc_001",
-                doc_title="Governing Document",
-                section_number="1.0",
-                char_start=0,
-                char_end=min(len(text), 100),
-                evidence_quote=text[:100] if text else "Verified contractual rule excerpt.",
-            )
-        ]
+        findings = []
         if state == VerdictState.CONTRADICTION:
             findings.append(
                 DocumentFinding(
                     category=FindingCategory.POTENTIAL_CONFLICT,
                     statement="Contradictory modal obligations or mismatched parameters detected between provisions.",
-                    clause_id="clause_001",
-                    doc_id="doc_001",
-                    doc_title="Governing Document",
-                    section_number="1.0",
                 )
             )
         elif state == VerdictState.NOT_COVERED:
@@ -447,10 +431,13 @@ class MetaLlamaGateway:
                 DocumentFinding(
                     category=FindingCategory.INFERENCE_FROM_EVIDENCE,
                     statement="Vague or undefined terminology creates an exploitable exception.",
-                    clause_id="clause_001",
-                    doc_id="doc_001",
-                    doc_title="Governing Document",
-                    section_number="1.0",
+                )
+            )
+        else:
+            findings.append(
+                DocumentFinding(
+                    category=FindingCategory.INFERENCE_FROM_EVIDENCE,
+                    statement="Affirmative permission or obligation inferred from governing contractual provisions.",
                 )
             )
 
