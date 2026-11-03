@@ -372,18 +372,22 @@ class MetaLlamaGateway:
         if any(w in q_lower for w in ["pet", "parking", "gym", "not covered", "unanswerable", "missing"]):
             state = VerdictState.NOT_COVERED
             compat = "NOT_COVERED"
-            ruling = "The question cannot be resolved within the scope of the provided policy corpus."
+            confidence = 0.0
+            ruling = "The question cannot be resolved within the scope of the provided policy corpus. External statutory law has not been evaluated."
         elif "loophole" in q_lower or "critical deliverable breach" in q_lower or "undefined" in q_lower:
             state = VerdictState.EXPLOITABLE_LOOPHOLE
             compat = "CONTRADICTION"
+            confidence = 0.90
             ruling = "Exploitable loophole detected due to ambiguous or undefined contractual exception terms."
         elif self._matches_contradiction_pattern(q_lower):
             state = VerdictState.CONTRADICTION
             compat = "CONTRADICTION"
+            confidence = 0.95
             ruling = "Direct inter-clause contradiction detected across authoritative documents."
         else:
             state = VerdictState.ANSWERABLE
             compat = "ANSWERABLE"
+            confidence = 0.92
             ruling = "Clear deontic obligation or permission established by verified policy citations."
 
         advocate = AgentBrief(
@@ -444,11 +448,11 @@ class MetaLlamaGateway:
         return CourtroomVerdict(
             verdict_state=state,
             benchmark_compat_state=compat,
-            confidence_score=0.92,
+            confidence_score=confidence,
             executive_ruling=ruling,
             advocate_brief=advocate,
             skeptic_brief=skeptic,
             missing_prerequisites=[],
-            verified_citations=[citation],
+            verified_citations=[citation] if state != VerdictState.NOT_COVERED else [],
             findings=findings,
         )

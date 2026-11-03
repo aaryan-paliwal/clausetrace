@@ -72,7 +72,7 @@ class AdversarialCourtroomEngine:
 
         # Relevance gate check
         if not retrieved_clauses or self._is_completely_irrelevant(query, retrieved_clauses):
-            return self._build_not_covered_verdict(query)
+            return self._build_not_covered_verdict(query, retrieved_clauses)
 
         # Prepare evidence text and structured inquiry context
         evidence_text = self._format_evidence(retrieved_clauses)
@@ -138,7 +138,7 @@ class AdversarialCourtroomEngine:
         yield f"event: retrieval\ndata: {json.dumps({'clauses_count': len(retrieved_clauses), 'clauses': retrieved_clauses[:4], 'debug': debug_info})}\n\n"
 
         if not retrieved_clauses or self._is_completely_irrelevant(query, retrieved_clauses):
-            verdict = self._build_not_covered_verdict(query)
+            verdict = self._build_not_covered_verdict(query, retrieved_clauses)
             yield f"event: verdict\ndata: {json.dumps(verdict.model_dump())}\n\n"
             return
 
@@ -239,33 +239,57 @@ class AdversarialCourtroomEngine:
         max_score = max([c.get("score", 0.0) for c in clauses]) if clauses else 0.0
         return max_score < 0.08
 
-    def _build_not_covered_verdict(self, query: str) -> CourtroomVerdict:
-        """Deterministic fail-safe verdict when corpus lacks coverage."""
+    def _build_not_covered_verdict(
+        self,
+        query: str,
+        retrieved_clauses: Optional[List[Dict[str, Any]]] = None,
+    ) -> CourtroomVerdict:
+        """
+        Deterministic verdict when the governing corpus lacks sufficient coverage.
+        Semantic distinction:
+        - Absence of evidence in uploaded/indexed corpus does NOT prove the legal issue does not exist.
+        - Clearly distinguishes unindexed subject matter, absence of evidence, and unverified statutory law.
+        - Low confidence score (0.0) indicates absence of proof rather than affirmative certainty.
+        - Preserves benchmark_compat_state="NOT_COVERED" for 3-state benchmark evaluation compatibility.
+        """
+        q_lower = query.lower()
+        if not retrieved_clauses:
+            reason = "No relevant documentary evidence was retrieved from the active collection."
+        elif self._is_completely_irrelevant(query, retrieved_clauses):
+            reason = "The subject matter falls outside the scope of uploaded and indexed agreements."
+        else:
+            reason = "The governing corpus does not contain sufficient information to substantiate or refute this inquiry."
+
+        explanation = (
+            f"{reason} Notice: Lack of coverage in the indexed corpus does not confirm that an obligation, "
+            f"statutory right, or legal liability does not exist under applicable external law."
+        )
+
         return CourtroomVerdict(
             verdict_state=VerdictState.NOT_COVERED,
             benchmark_compat_state="NOT_COVERED",
-            confidence_score=0.98,
-            executive_ruling="The subject matter of this inquiry is not covered by the governing contractual or institutional policy corpus.",
+            confidence_score=0.0,
+            executive_ruling=explanation,
             advocate_brief=AgentBrief(
                 agent_role="Advocate",
-                thesis="No affirmative policy or contractual grant was identified.",
-                arguments=["Corpus search yielded no relevant deontic rules"],
+                thesis="No affirmative policy or contractual grant was identified in the provided materials.",
+                arguments=["Corpus search yielded no relevant deontic rules", "Applicable statutory enactments not indexed"],
                 cited_clause_ids=[],
                 flagged_gaps_or_undefined_terms=[],
             ),
             skeptic_brief=AgentBrief(
                 agent_role="Skeptic",
-                thesis="The query falls completely outside the scope of governing documentation.",
-                arguments=["Out of distribution / non-covered subject matter"],
+                thesis="The query cannot be resolved from the active document corpus alone.",
+                arguments=["Insufficient factual or contractual coverage", "External governing law unexamined"],
                 cited_clause_ids=[],
-                flagged_gaps_or_undefined_terms=["Subject matter unaddressed"],
+                flagged_gaps_or_undefined_terms=["Governing covenants unaddressed in corpus"],
             ),
-            missing_prerequisites=["Relevant policy or contractual covenant"],
+            missing_prerequisites=["Governing contractual document or applicable statutory text"],
             verified_citations=[],
             findings=[
                 DocumentFinding(
                     category=FindingCategory.MISSING_INFORMATION,
-                    statement="The inquiry premise is not covered by any document or clause in the governing corpus.",
+                    statement="The inquiry premise is not covered by any document or clause in the active workspace corpus.",
                 )
             ],
         )
@@ -275,24 +299,81 @@ class AdversarialCourtroomEngine:
         workspace_id: str,
         clauses: List[Dict[str, Any]],
     ) -> List[CitationSpan]:
-        """Produce verified citations with character boundaries from the database."""
+        """
+        Produce verified citations with character boundaries from the database.
+        Deterministic citation verification requirements:
+        1. Resolve parent document.
+        2. Verify clause belongs to that document and workspace.
+        3. Verify clause offsets against the original document bounds.
+        4. Verify clause text against the source substring.
+        5. Calculate quotation offsets accurately if a shortened quotation is displayed.
+        6. Never label a citation verified if its quotation and offsets do not match.
+        """
         with get_db_context(self.db_path) as conn:
             repo = Repository(conn)
             docs = {d["id"]: d for d in repo.list_documents(workspace_id=workspace_id)}
+            all_clauses = {c["id"]: c for c in repo.list_clauses(workspace_id=workspace_id)}
 
         citations = []
         for c in clauses[:3]:
-            parent_doc = docs.get(c.get("doc_id"), {})
-            quote = c["text"][:150].strip()
+            clause_id = c.get("id")
+            if not clause_id or clause_id not in all_clauses:
+                continue
+
+            db_clause = all_clauses[clause_id]
+            doc_id = db_clause.get("doc_id")
+            if not doc_id or doc_id not in docs:
+                continue
+
+            # Verify workspace match
+            if db_clause.get("workspace_id") != workspace_id:
+                continue
+
+            parent_doc = docs[doc_id]
+            raw_text = parent_doc.get("raw_text", "")
+
+            # Verify clause offsets within parent document bounds
+            c_start = db_clause.get("char_start", 0)
+            c_end = db_clause.get("char_end", 0)
+            if c_start < 0 or c_end > len(raw_text) or c_start >= c_end:
+                continue
+
+            # Verify clause text matches source substring (allowing for trailing whitespace stripping)
+            expected_clause_text = raw_text[c_start:c_end]
+            db_text = db_clause.get("text", "")
+            if db_text != expected_clause_text and db_text.strip() != expected_clause_text.strip():
+                continue
+
+            # Calculate accurate quotation offsets
+            # Display up to 150 characters, but compute exact character coordinates
+            raw_quote_slice = db_text[:150]
+            # Strip while adjusting offsets
+            l_stripped = len(raw_quote_slice) - len(raw_quote_slice.lstrip())
+            quote = raw_quote_slice.strip()
+            if not quote:
+                continue
+
+            # Find quote's exact position within the clause text in source
+            pos_in_source = raw_text[c_start:c_end].find(quote)
+            if pos_in_source == -1:
+                continue
+
+            quote_start = c_start + pos_in_source
+            quote_end = quote_start + len(quote)
+
+            # Verification check: quote must match source text at [quote_start:quote_end]
+            if raw_text[quote_start:quote_end] != quote:
+                continue
+
             citations.append(
                 CitationSpan(
-                    clause_id=c["id"],
-                    doc_id=c.get("doc_id", "doc_unknown"),
+                    clause_id=clause_id,
+                    doc_id=doc_id,
                     doc_title=parent_doc.get("title", "Governing Document"),
-                    section_number=c.get("section_number", "1.0"),
+                    section_number=db_clause.get("section_number", "1.0"),
                     verbatim_quote=quote,
-                    char_start=c.get("char_start", 0),
-                    char_end=c.get("char_end", len(quote)),
+                    char_start=quote_start,
+                    char_end=quote_end,
                 )
             )
         return citations
@@ -329,7 +410,17 @@ class AdversarialCourtroomEngine:
                 continue
 
             if finding.category == FindingCategory.MISSING_INFORMATION:
-                sanitized_findings.append(finding)
+                # MISSING_INFORMATION: Must not have fabricated or speculative source references
+                if finding.doc_id or finding.clause_id or finding.char_start is not None or finding.evidence_quote:
+                    # Sanitize by stripping source reference attributes, keeping statement as missing information
+                    sanitized_findings.append(
+                        DocumentFinding(
+                            category=FindingCategory.MISSING_INFORMATION,
+                            statement=finding.statement,
+                        )
+                    )
+                else:
+                    sanitized_findings.append(finding)
                 continue
 
             # For DIRECT_DOCUMENT_EVIDENCE, enforce strict verification
@@ -418,17 +509,23 @@ class AdversarialCourtroomEngine:
                         evidence_quote=finding.evidence_quote,
                     )
                 )
-            else:
-                # INFERENCE_FROM_EVIDENCE or POTENTIAL_CONFLICT
-                # Validate doc_id and clause_id if provided
-                if finding.doc_id and finding.doc_id not in docs:
+            elif finding.category == FindingCategory.INFERENCE_FROM_EVIDENCE:
+                # INFERENCE_FROM_EVIDENCE: Must reference valid supporting document/clause in the workspace
+                if not finding.doc_id or finding.doc_id not in docs:
                     sanitized_findings.append(
                         DocumentFinding(
                             category=FindingCategory.UNSUPPORTED_CONCLUSION,
                             statement=finding.statement,
                         )
                     )
-                elif finding.clause_id and (finding.clause_id not in clauses or (finding.doc_id and clauses[finding.clause_id].get("doc_id") != finding.doc_id)):
+                elif not finding.clause_id or finding.clause_id not in clauses:
+                    sanitized_findings.append(
+                        DocumentFinding(
+                            category=FindingCategory.UNSUPPORTED_CONCLUSION,
+                            statement=finding.statement,
+                        )
+                    )
+                elif clauses[finding.clause_id].get("doc_id") != finding.doc_id:
                     sanitized_findings.append(
                         DocumentFinding(
                             category=FindingCategory.UNSUPPORTED_CONCLUSION,
@@ -436,6 +533,51 @@ class AdversarialCourtroomEngine:
                         )
                     )
                 else:
-                    sanitized_findings.append(finding)
+                    parent_doc = docs[finding.doc_id]
+                    clause = clauses[finding.clause_id]
+                    sanitized_findings.append(
+                        DocumentFinding(
+                            category=FindingCategory.INFERENCE_FROM_EVIDENCE,
+                            statement=finding.statement,
+                            doc_id=finding.doc_id,
+                            doc_title=parent_doc.get("title", finding.doc_title),
+                            clause_id=finding.clause_id,
+                            section_number=clause.get("section_number", finding.section_number),
+                        )
+                    )
+            elif finding.category == FindingCategory.POTENTIAL_CONFLICT:
+                # POTENTIAL_CONFLICT: If clause/doc references are provided, they must exist and be valid
+                if finding.doc_id and finding.doc_id not in docs:
+                    sanitized_findings.append(
+                        DocumentFinding(
+                            category=FindingCategory.UNSUPPORTED_CONCLUSION,
+                            statement=finding.statement,
+                        )
+                    )
+                elif finding.clause_id and (
+                    finding.clause_id not in clauses
+                    or (finding.doc_id and clauses[finding.clause_id].get("doc_id") != finding.doc_id)
+                ):
+                    sanitized_findings.append(
+                        DocumentFinding(
+                            category=FindingCategory.UNSUPPORTED_CONCLUSION,
+                            statement=finding.statement,
+                        )
+                    )
+                else:
+                    doc_title = docs[finding.doc_id].get("title") if finding.doc_id and finding.doc_id in docs else finding.doc_title
+                    sec_num = clauses[finding.clause_id].get("section_number") if finding.clause_id and finding.clause_id in clauses else finding.section_number
+                    sanitized_findings.append(
+                        DocumentFinding(
+                            category=FindingCategory.POTENTIAL_CONFLICT,
+                            statement=finding.statement,
+                            doc_id=finding.doc_id,
+                            doc_title=doc_title,
+                            clause_id=finding.clause_id,
+                            section_number=sec_num,
+                        )
+                    )
+            else:
+                sanitized_findings.append(finding)
 
         return sanitized_findings

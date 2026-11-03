@@ -162,3 +162,75 @@ def test_unsupported_conclusions_remain_classified():
     sanitized = engine.validate_and_sanitize_findings("ws_startup_legal", [unsupported_finding])
     assert len(sanitized) == 1
     assert sanitized[0].category == FindingCategory.UNSUPPORTED_CONCLUSION
+
+
+def test_inference_from_evidence_validation(seeded_workspace):
+    """Verify that INFERENCE_FROM_EVIDENCE requires valid doc and clause references."""
+    doc, clause = seeded_workspace
+    engine = AdversarialCourtroomEngine()
+
+    # Valid inference
+    valid_inference = DocumentFinding(
+        category=FindingCategory.INFERENCE_FROM_EVIDENCE,
+        statement="Termination right inferred from covenant structure.",
+        doc_id=doc["id"],
+        clause_id=clause["id"],
+    )
+    res_valid = engine.validate_and_sanitize_findings("ws_startup_legal", [valid_inference])
+    assert res_valid[0].category == FindingCategory.INFERENCE_FROM_EVIDENCE
+    assert res_valid[0].doc_id == doc["id"]
+
+    # Invalid inference with bogus clause -> demoted to UNSUPPORTED_CONCLUSION
+    invalid_inference = DocumentFinding(
+        category=FindingCategory.INFERENCE_FROM_EVIDENCE,
+        statement="Speculative conclusion without real clause backing.",
+        doc_id=doc["id"],
+        clause_id="bogus_clause_123",
+    )
+    res_invalid = engine.validate_and_sanitize_findings("ws_startup_legal", [invalid_inference])
+    assert res_invalid[0].category == FindingCategory.UNSUPPORTED_CONCLUSION
+
+
+def test_potential_conflict_validation(seeded_workspace):
+    """Verify that POTENTIAL_CONFLICT validates clause references when provided."""
+    doc, clause = seeded_workspace
+    engine = AdversarialCourtroomEngine()
+
+    # Valid conflict reference
+    valid_conflict = DocumentFinding(
+        category=FindingCategory.POTENTIAL_CONFLICT,
+        statement="Conflict between notice periods.",
+        doc_id=doc["id"],
+        clause_id=clause["id"],
+    )
+    res_valid = engine.validate_and_sanitize_findings("ws_startup_legal", [valid_conflict])
+    assert res_valid[0].category == FindingCategory.POTENTIAL_CONFLICT
+
+    # Invalid conflict reference with bogus doc -> demoted
+    invalid_conflict = DocumentFinding(
+        category=FindingCategory.POTENTIAL_CONFLICT,
+        statement="Alleged conflict in unknown document.",
+        doc_id="bogus_doc_xyz",
+    )
+    res_invalid = engine.validate_and_sanitize_findings("ws_startup_legal", [invalid_conflict])
+    assert res_invalid[0].category == FindingCategory.UNSUPPORTED_CONCLUSION
+
+
+def test_missing_information_strips_fabricated_sources(seeded_workspace):
+    """Verify that MISSING_INFORMATION findings do not retain fabricated source references."""
+    doc, clause = seeded_workspace
+    engine = AdversarialCourtroomEngine()
+
+    missing_with_fake_source = DocumentFinding(
+        category=FindingCategory.MISSING_INFORMATION,
+        statement="Cure period not defined.",
+        doc_id=doc["id"],
+        clause_id=clause["id"],
+        char_start=0,
+        evidence_quote="Fake quote",
+    )
+    res = engine.validate_and_sanitize_findings("ws_startup_legal", [missing_with_fake_source])
+    assert res[0].category == FindingCategory.MISSING_INFORMATION
+    assert res[0].doc_id is None
+    assert res[0].clause_id is None
+    assert res[0].evidence_quote is None

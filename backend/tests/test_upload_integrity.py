@@ -116,19 +116,20 @@ The NDA lasts 2 years for commercial discussions.
     assert res1.status_code == 200
     doc_1_id = res1.json()["doc_id"]
 
-    # 1. Same workspace and SAME content -> replaces previous document, count stays same
+    # 1. Same workspace and SAME content -> idempotent recognition, returns existing doc_id
     file_payload_same = ("nda_copy.md", io.BytesIO(content_a), "text/markdown")
     res_same = client.post(
         "/api/v1/workspaces/ws_startup_legal/documents",
         files={"file": file_payload_same},
     )
     assert res_same.status_code == 200
+    same_data = res_same.json()
+    assert same_data.get("is_duplicate") is True
+    assert same_data["doc_id"] == doc_1_id
 
     graph_after_same = client.get("/api/v1/workspaces/ws_startup_legal/graph").json()
-    # The old doc should have been replaced
-    assert not any(d["id"] == doc_1_id for d in graph_after_same["documents"])
-    assert any(d["id"] == res_same.json()["doc_id"] for d in graph_after_same["documents"])
-
+    # Document identity and count preserved
+    assert any(d["id"] == doc_1_id for d in graph_after_same["documents"])
     count_after_same = graph_after_same["summary_metrics"]["total_documents"]
 
     # 2. Same workspace and DIFFERENT content -> retain both documents (even with same filename 'nda.md')

@@ -82,10 +82,21 @@ async def upload_document(
         # Workspace-scoped content hash for duplicate detection
         content_hash = hashlib.sha256(raw_text.strip().encode("utf-8")).hexdigest()
 
-        # Same workspace and same content -> replace existing identical document cleanly
+        # Idempotent duplicate check: If identical content hash already exists in this workspace,
+        # return existing document ID without re-parsing, destroying identity, or recompiling graph
         existing_doc = repo.find_document_by_content_hash(workspace_id, content_hash)
         if existing_doc:
-            repo.delete_document(existing_doc["id"])
+            existing_clauses = repo.list_clauses(doc_id=existing_doc["id"])
+            compiler = DeonticRuleGraphCompiler()
+            current_graph = compiler.get_graph(workspace_id)
+            return {
+                "status": "success",
+                "is_duplicate": True,
+                "doc_id": existing_doc["id"],
+                "title": existing_doc["title"],
+                "clauses_created": len(existing_clauses),
+                "summary_metrics": current_graph["summary_metrics"],
+            }
 
         doc_id = f"doc_{uuid.uuid4().hex[:8]}"
         title = file.filename.rsplit(".", 1)[0].replace("_", " ").title()

@@ -183,7 +183,9 @@ export const ProblemIntakeForm: React.FC<ProblemIntakeFormProps> = ({
                     {uploadResult.title}
                   </span>
                   <span className="text-[10px] text-emerald-400 font-medium">
-                    Verified: {uploadResult.clauses_created} clauses parsed and added to active collection.
+                    {uploadResult.is_duplicate 
+                      ? `Existing document recognized: ${uploadResult.clauses_created} indexed clauses preserved.`
+                      : `Verified: ${uploadResult.clauses_created} clauses parsed and added to active collection.`}
                   </span>
                   <span className="text-[10px] text-slate-400 underline mt-1">
                     Click to upload another document

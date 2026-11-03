@@ -169,6 +169,7 @@ export interface CourtroomQueryParams {
 
 export interface DocumentUploadResponse {
   status: string;
+  is_duplicate?: boolean;
   doc_id: string;
   title: string;
   clauses_created: number;

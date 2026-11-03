@@ -60,7 +60,9 @@ async def test_courtroom_verdicts(temp_db):
     )
     assert v_not_covered.verdict_state == VerdictState.NOT_COVERED
     assert v_not_covered.benchmark_compat_state == "NOT_COVERED"
+    assert v_not_covered.confidence_score == 0.0
     assert len(v_not_covered.verified_citations) == 0
+    assert "Lack of coverage in the indexed corpus does not confirm" in v_not_covered.executive_ruling
 
 
 @pytest.mark.asyncio
