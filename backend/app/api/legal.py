@@ -1,7 +1,8 @@
 """REST API router for Indian Legal Knowledge Foundation."""
 from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 
+from app.config import settings
 from app.db.database import get_db_context
 from app.db.repository import Repository
 from app.engines.legal_ingestion import LegalIngestionEngine, seed_initial_indian_legal_corpus
@@ -20,6 +21,29 @@ from app.llm.legal_schemas import (
 )
 
 router = APIRouter(prefix="/api/v1/legal", tags=["Legal Knowledge"])
+
+
+def verify_auditor_access(
+    x_auditor_key: Optional[str] = Header(None, alias="X-Auditor-Key"),
+) -> str:
+    """
+    Scoped auditor authorization check for statutory verification state updates.
+
+    Security Model & Scope Limitation:
+    This check verifies an administrative auditor key supplied via the 'X-Auditor-Key'
+    HTTP header against the configured 'AUDITOR_API_KEY'. It ensures that unauthenticated
+    or general-public client requests cannot modify statutory provenance or verification records.
+    NOTE: This is a scoped API authorization mechanism and does not constitute full enterprise
+    multi-tenant RBAC or OAuth2 session management, which will be implemented in subsequent
+    iterations when user identities are integrated into the platform.
+    """
+    expected_key = getattr(settings, "AUDITOR_API_KEY", "clausetrace-dev-auditor-key")
+    if not x_auditor_key or x_auditor_key != expected_key:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Auditor authorization required: Invalid or missing 'X-Auditor-Key' header.",
+        )
+    return x_auditor_key
 
 
 # ---------------------------------------------------------------------------
@@ -137,7 +161,6 @@ async def list_provisions_for_source(source_id: str, version_id: Optional[str] =
         source = repo.get_legal_source(source_id)
         if not source:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Legal source '{source_id}' not found.")
-
         provisions = repo.list_provisions_for_source(source_id, version_id=version_id)
         for p in provisions:
             p["provenance"] = repo.get_provision_provenance(p["id"])
@@ -205,10 +228,16 @@ async def get_provision_provenance(provision_id: str) -> Dict[str, Any]:
 
 
 @router.patch("/provisions/{provision_id}/verification", response_model=ProvisionProvenanceResponse)
-async def update_provision_verification_state(provision_id: str, req: VerificationUpdateRequest) -> Dict[str, Any]:
+async def update_provision_verification_state(
+    provision_id: str,
+    req: VerificationUpdateRequest,
+    _auditor_key: str = Depends(verify_auditor_access),
+) -> Dict[str, Any]:
     """
     Audit and update the legal verification status of a provision.
     Transitions can mark a provision as VERIFIED, REJECTED, SUPERSEDED, etc., with auditor attribution.
+
+    Requires scoped auditor authorization via 'X-Auditor-Key' header.
     """
     with get_db_context() as conn:
         repo = Repository(conn)

@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     META_PRIMARY_MODEL: str = "Llama-3.3-70B-Instruct"
     META_FAST_MODEL: str = "Llama-3.1-8B-Instruct"
     DATABASE_PATH: str = "./data/clausetrace.db"
+    AUDITOR_API_KEY: str = "clausetrace-dev-auditor-key"
     CORS_ORIGINS: Union[List[str], str] = [
         "http://localhost:5173",
         "http://127.0.0.1:5173",

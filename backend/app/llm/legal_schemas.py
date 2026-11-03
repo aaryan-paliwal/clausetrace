@@ -286,3 +286,4 @@ class VerificationUpdateRequest(BaseModel):
     verification_state: LegalVerificationStatus
     verified_by: str = Field(..., description="User, Auditor or System process identifier")
     verification_notes: Optional[str] = None
+

@@ -1,6 +1,6 @@
-"""Comprehensive automated test suite for Indian Legal Knowledge Foundation (Iteration 2A).
+"""Comprehensive automated test suite for Indian Legal Knowledge Foundation (Iteration 2A & 2A.1).
 
-Tests all 12 required criteria:
+Tests criteria:
 1. Legal source creation
 2. Duplicate source detection (ID and citation)
 3. Legal provision creation
@@ -10,10 +10,14 @@ Tests all 12 required criteria:
 7. Historical version preservation
 8. Superseded provisions
 9. Content-hash duplicate detection
-10. Ingestion failure handling
+10. Ingestion failure handling & seed corpus
 11. Verification status transitions
 12. API response validation
+13. Labour code commencement metadata & Gazette notifications (21 Nov 2025)
+14. Provision-level commencement and exception handling
+15. Verification endpoint authorization guard (X-Auditor-Key)
 """
+import json
 import pytest
 from httpx import ASGITransport, AsyncClient
 
@@ -380,7 +384,7 @@ async def test_content_hash_duplicate_detection(test_db):
 async def test_seed_initial_indian_legal_corpus(test_db):
     report = seed_initial_indian_legal_corpus(db_path=test_db)
     assert report["sources_created"] == 4
-    assert report["provisions_created"] >= 3
+    assert report["provisions_created"] >= 4
 
     with get_db_context(test_db) as conn:
         repo = Repository(conn)
@@ -388,18 +392,98 @@ async def test_seed_initial_indian_legal_corpus(test_db):
         assert wages is not None
         assert wages["citation_ref"] == "Act No. 29 of 2019"
         assert wages["source_language"] == "en"
+        assert wages["effective_from"] == "2025-11-21"
 
         # Verify provisions under wages code
         provisions = repo.list_provisions_for_source("code-on-wages-2019")
-        assert len(provisions) >= 3
+        assert len(provisions) >= 4
         sec_nums = [p["section"] for p in provisions]
         assert "6" in sec_nums
         assert "9" in sec_nums
         assert "17" in sec_nums
+        assert "42" in sec_nums
 
 
 # ---------------------------------------------------------------------------
-# 11. VERIFICATION STATUS TRANSITIONS
+# 11. LABOUR CODES COMMENCEMENT METADATA & GAZETTE NOTIFICATIONS
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_labour_codes_commencement_metadata(test_db):
+    """
+    Verifies that the 4 central Labour Codes carry the authoritative 21 Nov 2025
+    commencement metadata, Gazette notification references, and rules status separation.
+    """
+    seed_initial_indian_legal_corpus(db_path=test_db)
+
+    with get_db_context(test_db) as conn:
+        repo = Repository(conn)
+
+        expected_sources = {
+            "code-on-wages-2019": "S.O. 5322(E)",
+            "industrial-relations-code-2020": "S.O. 5320(E)",
+            "code-on-social-security-2020": "S.O. 5319(E)",
+            "oshwc-code-2020": "S.O. 5321(E)",
+        }
+
+        for source_id, expected_so in expected_sources.items():
+            source = repo.get_legal_source(source_id)
+            assert source is not None, f"Source {source_id} missing"
+            assert source["effective_from"] == "2025-11-21", f"{source_id} effective_from must be 2025-11-21"
+
+            meta = json.loads(source["metadata_json"])
+            assert meta["commencement_date"] == "2025-11-21"
+            assert expected_so in meta["commencement_notification_ref"]
+            assert meta["pib_press_release_ref"] == "PIB PRID 2192463"
+            assert meta["gazette_url"] == "https://egazette.gov.in"
+            assert "rules_notification_status" in meta
+            assert "state_rules_status" in meta
+            assert len(meta["repealed_acts"]) > 0
+
+
+# ---------------------------------------------------------------------------
+# 12. PROVISION-LEVEL COMMENCEMENT & EXCEPTION HANDLING
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_provision_level_commencement_and_exceptions(test_db):
+    """
+    Verifies provision-level granularity: commenced sections are ACTIVE on 2025-11-21,
+    while sections withheld from commencement (e.g. Wages Code § 42(1)-(3)) remain NOT_YET_ENFORCED.
+    """
+    seed_initial_indian_legal_corpus(db_path=test_db)
+
+    with get_db_context(test_db) as conn:
+        repo = Repository(conn)
+        provisions = repo.list_provisions_for_source("code-on-wages-2019")
+        prov_map = {p["section"]: p for p in provisions}
+
+        # Commenced provisions under S.O. 5322(E)
+        for active_sec in ["6", "9", "17"]:
+            assert active_sec in prov_map
+            p = prov_map[active_sec]
+            assert p["status"] == "ACTIVE"
+            assert p["effective_from"] == "2025-11-21"
+
+            prov_provenance = repo.get_provision_provenance(p["id"])
+            assert prov_provenance is not None
+            assert prov_provenance["document_identifier"] == "S.O. 5322(E)"
+            assert prov_provenance["effective_date"] == "2025-11-21"
+            assert prov_provenance["official_uri"] == "https://egazette.gov.in"
+
+        # Explicit provision-level exception: Section 42(1) withheld
+        assert "42" in prov_map
+        p42 = prov_map["42"]
+        assert p42["status"] == "NOT_YET_ENFORCED"
+        assert p42["effective_from"] is None
+
+        prov_42_provenance = repo.get_provision_provenance(p42["id"])
+        assert prov_42_provenance is not None
+        assert "Withheld" in prov_42_provenance["document_identifier"]
+
+
+# ---------------------------------------------------------------------------
+# 13. VERIFICATION STATUS TRANSITIONS
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
@@ -440,7 +524,62 @@ async def test_verification_status_transitions(test_db):
 
 
 # ---------------------------------------------------------------------------
-# 12. FASTAPI ENDPOINT VALIDATION
+# 14. VERIFICATION ENDPOINT AUTHORIZATION GUARD
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_verification_endpoint_authorization(client):
+    """
+    Verifies that the verification update endpoint rejects unauthorized callers (403)
+    and succeeds when supplied with the valid scoped X-Auditor-Key header.
+    """
+    # 1. Register Source and Provision via API
+    await client.post("/api/v1/legal/sources", json={
+        "id": "auth-test-source",
+        "title": "Auth Guarded Act",
+        "source_type": "ACT",
+        "jurisdiction_id": "IN",
+    })
+    res_ingest = await client.post("/api/v1/legal/sources/auth-test-source/provisions", json=[{
+        "source_id": "auth-test-source",
+        "section": "1",
+        "provision_text": "Protected statutory text.",
+    }])
+    assert res_ingest.status_code == 201
+    prov_id = res_ingest.json()[0]["id"]
+
+    patch_payload = {
+        "verification_state": "VERIFIED",
+        "verified_by": "lead_auditor",
+        "verification_notes": "Audited with verification key.",
+    }
+
+    # 2. Reject unauthenticated request (no X-Auditor-Key)
+    res_no_auth = await client.patch(f"/api/v1/legal/provisions/{prov_id}/verification", json=patch_payload)
+    assert res_no_auth.status_code == 403
+    assert "Auditor authorization required" in res_no_auth.json()["detail"]
+
+    # 3. Reject invalid key
+    res_bad_key = await client.patch(
+        f"/api/v1/legal/provisions/{prov_id}/verification",
+        json=patch_payload,
+        headers={"X-Auditor-Key": "wrong-key-secret"},
+    )
+    assert res_bad_key.status_code == 403
+
+    # 4. Accept valid key
+    res_valid = await client.patch(
+        f"/api/v1/legal/provisions/{prov_id}/verification",
+        json=patch_payload,
+        headers={"X-Auditor-Key": "clausetrace-dev-auditor-key"},
+    )
+    assert res_valid.status_code == 200
+    assert res_valid.json()["verification_state"] == "VERIFIED"
+    assert res_valid.json()["verified_by"] == "lead_auditor"
+
+
+# ---------------------------------------------------------------------------
+# 15. FASTAPI ENDPOINT VALIDATION
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
@@ -507,13 +646,22 @@ async def test_legal_api_endpoints(client):
     assert res_prov.status_code == 200
     assert res_prov.json()["verification_state"] == "PENDING_VERIFICATION"
 
-    # 7. Update Verification Status via API
+    # 7. Update Verification Status via API (Security Guarded)
     patch_payload = {
         "verification_state": "VERIFIED",
         "verified_by": "advocate_test_user",
         "verification_notes": "Verified against India Code digital copy.",
     }
-    res_patch = await client.patch(f"/api/v1/legal/provisions/{prov_id}/verification", json=patch_payload)
+    # Unauthenticated should fail with 403
+    res_unauth = await client.patch(f"/api/v1/legal/provisions/{prov_id}/verification", json=patch_payload)
+    assert res_unauth.status_code == 403
+
+    # Authorized with X-Auditor-Key should succeed with 200
+    res_patch = await client.patch(
+        f"/api/v1/legal/provisions/{prov_id}/verification",
+        json=patch_payload,
+        headers={"X-Auditor-Key": "clausetrace-dev-auditor-key"},
+    )
     assert res_patch.status_code == 200
     assert res_patch.json()["verification_state"] == "VERIFIED"
     assert res_patch.json()["verified_by"] == "advocate_test_user"

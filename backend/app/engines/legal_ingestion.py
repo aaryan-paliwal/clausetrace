@@ -152,6 +152,13 @@ class LegalIngestionEngine:
                     p_id = f"{base_pid}-{idx}"
                     idx += 1
 
+                # Provision-level commencement: NOT_YET_ENFORCED provisions should not inherit Act effective_from
+                prov_effective_from = p.effective_from
+                if prov_effective_from is None and p.status != ProvisionStatus.NOT_YET_ENFORCED:
+                    prov_effective_from = source.get("effective_from")
+
+                prov_effective_to = p.effective_to or source.get("effective_to")
+
                 created_prov = repo.create_legal_provision(
                     provision_id=p_id,
                     source_id=source_id,
@@ -170,8 +177,8 @@ class LegalIngestionEngine:
                     heading=p.heading,
                     provision_text=p.provision_text,
                     citation_key=p.citation_key or f"{source['title']} § {p.section or p.rule_number or ''}".strip(),
-                    effective_from=p.effective_from or source.get("effective_from"),
-                    effective_to=p.effective_to or source.get("effective_to"),
+                    effective_from=prov_effective_from,
+                    effective_to=prov_effective_to,
                     status=p.status.value,
                 )
 
@@ -186,7 +193,7 @@ class LegalIngestionEngine:
                     issuing_authority=p.issuing_authority or source.get("authority_id") or "INDIA_CODE",
                     document_identifier=p.document_identifier or source.get("citation_ref"),
                     publication_date=source.get("publication_date"),
-                    effective_date=p.effective_from or source.get("effective_from"),
+                    effective_date=prov_effective_from,
                     version_label="Original Publication",
                     content_hash=compute_content_hash(p.provision_text),
                     extraction_method=p.extraction_method,
@@ -213,14 +220,23 @@ class LegalIngestionEngine:
 
 def seed_initial_indian_legal_corpus(db_path: Optional[str] = None) -> Dict[str, Any]:
     """
-    Seed structured definitions for the 4 major Indian Labour Codes:
+    Seed structured definitions for the 4 central Indian Labour Codes:
     1. Code on Wages, 2019 (Act No. 29 of 2019)
     2. Industrial Relations Code, 2020 (Act No. 35 of 2020)
     3. Code on Social Security, 2020 (Act No. 36 of 2020)
     4. Occupational Safety, Health and Working Conditions Code, 2020 (Act No. 37 of 2020)
 
-    Accurately reflects statutory status: Enacted by Parliament; full commencement awaits
-    Central/State notification of rules. Marked NOT_YET_ENFORCED and PENDING_VERIFICATION.
+    Commencement Status (Gazette Ground Truth):
+    Pursuant to Central Government notifications dated 21 November 2025 (PIB PRID 2192463):
+    - Code on Wages, 2019: Commenced via S.O. 5322(E) dated 21-11-2025 (Sections 1-41, 42(4)-(9), 43-66, 67(1),(2)(a)-(r),(u)-(zc),(3)-(5), 68, 69).
+    - Industrial Relations Code, 2020: Commenced via S.O. 5320(E) dated 21-11-2025.
+    - Code on Social Security, 2020: Commenced via S.O. 5319(E) dated 21-11-2025.
+    - Occupational Safety, Health and Working Conditions Code, 2020: Commenced via S.O. 5321(E) dated 21-11-2025.
+
+    Distinct Statutory Layers:
+    - Act Commencement: Appointed date is 2025-11-21 across all four codes.
+    - Rules Notification: Subordinate Central and State Rules are notified separately and track distinct progress.
+    - Provision-Level Exceptions: Specific sections withheld from enforcement (e.g. Wages Code Section 42(1)-(3)) remain NOT_YET_ENFORCED.
     """
     engine = LegalIngestionEngine(db_path=db_path)
     report = {"sources_created": 0, "provisions_created": 0}
@@ -237,16 +253,23 @@ def seed_initial_indian_legal_corpus(db_path: Optional[str] = None) -> Dict[str,
             citation_ref="Act No. 29 of 2019",
             publication_date="2019-08-08",
             enactment_date="2019-08-08",
-            effective_from=None,  # Section 1(3) provides for appointed dates by central notification
+            effective_from="2025-11-21",
             source_language="en",
             metadata_json={
+                "commencement_notification_ref": "S.O. 5322(E) dated 21-11-2025",
+                "commencement_date": "2025-11-21",
+                "pib_press_release_ref": "PIB PRID 2192463",
+                "gazette_url": "https://egazette.gov.in",
+                "rules_notification_status": "CENTRAL_RULES_PENDING",
+                "state_rules_status": "DRAFT_PUBLISHED_IN_MAJOR_STATES",
+                "commenced_sections_scope": "Sections 1 to 41, 42(4) to 42(9), 43 to 66, 67(1), 67(2)(a)-(r), (u)-(zc), 67(3)-(5), 68, 69",
+                "withheld_sections_scope": "Section 42(1) to 42(3) (Central/State Advisory Board constitution withheld)",
                 "repealed_acts": [
                     "Payment of Wages Act, 1936",
                     "Minimum Wages Act, 1948",
                     "Payment of Bonus Act, 1965",
                     "Equal Remuneration Act, 1976",
                 ],
-                "enforcement_status": "Passed by Parliament; section-wise notification pending full implementation.",
             },
         ),
         LegalSourceCreate(
@@ -260,9 +283,15 @@ def seed_initial_indian_legal_corpus(db_path: Optional[str] = None) -> Dict[str,
             citation_ref="Act No. 35 of 2020",
             publication_date="2020-09-29",
             enactment_date="2020-09-28",
-            effective_from=None,
+            effective_from="2025-11-21",
             source_language="en",
             metadata_json={
+                "commencement_notification_ref": "S.O. 5320(E) dated 21-11-2025",
+                "commencement_date": "2025-11-21",
+                "pib_press_release_ref": "PIB PRID 2192463",
+                "gazette_url": "https://egazette.gov.in",
+                "rules_notification_status": "CENTRAL_RULES_PENDING",
+                "state_rules_status": "DRAFT_PUBLISHED_IN_MAJOR_STATES",
                 "repealed_acts": [
                     "Trade Unions Act, 1926",
                     "Industrial Employment (Standing Orders) Act, 1946",
@@ -281,9 +310,15 @@ def seed_initial_indian_legal_corpus(db_path: Optional[str] = None) -> Dict[str,
             citation_ref="Act No. 36 of 2020",
             publication_date="2020-09-29",
             enactment_date="2020-09-28",
-            effective_from=None,
+            effective_from="2025-11-21",
             source_language="en",
             metadata_json={
+                "commencement_notification_ref": "S.O. 5319(E) dated 21-11-2025",
+                "commencement_date": "2025-11-21",
+                "pib_press_release_ref": "PIB PRID 2192463",
+                "gazette_url": "https://egazette.gov.in",
+                "rules_notification_status": "CENTRAL_RULES_PENDING",
+                "state_rules_status": "DRAFT_PUBLISHED_IN_MAJOR_STATES",
                 "repealed_acts": [
                     "Employees' Provident Funds and Miscellaneous Provisions Act, 1952",
                     "Employees' State Insurance Act, 1948",
@@ -303,9 +338,15 @@ def seed_initial_indian_legal_corpus(db_path: Optional[str] = None) -> Dict[str,
             citation_ref="Act No. 37 of 2020",
             publication_date="2020-09-29",
             enactment_date="2020-09-28",
-            effective_from=None,
+            effective_from="2025-11-21",
             source_language="en",
             metadata_json={
+                "commencement_notification_ref": "S.O. 5321(E) dated 21-11-2025",
+                "commencement_date": "2025-11-21",
+                "pib_press_release_ref": "PIB PRID 2192463",
+                "gazette_url": "https://egazette.gov.in",
+                "rules_notification_status": "CENTRAL_RULES_PENDING",
+                "state_rules_status": "DRAFT_PUBLISHED_IN_MAJOR_STATES",
                 "repealed_acts": [
                     "Factories Act, 1948",
                     "Contract Labour (Regulation and Abolition) Act, 1970",
@@ -322,7 +363,10 @@ def seed_initial_indian_legal_corpus(db_path: Optional[str] = None) -> Dict[str,
         except ValueError:
             pass  # Source already registered
 
-    # Key provisions for Code on Wages 2019 (Illustrative statutory anchors)
+    # Key provisions for Code on Wages 2019
+    # Illustrates provision-level commencement:
+    # - Commenced sections (Sec 6, 9, 17) marked ACTIVE effective 2025-11-21
+    # - Withheld sections (Sec 42(1)-(3)) marked NOT_YET_ENFORCED as an explicit exception
     wages_provisions = [
         LegalProvisionCreate(
             source_id="code-on-wages-2019",
@@ -335,9 +379,12 @@ def seed_initial_indian_legal_corpus(db_path: Optional[str] = None) -> Dict[str,
                 "payable to employees in accordance with the provisions of section 8."
             ),
             citation_key="Code on Wages, 2019 § 6(1)",
-            status=ProvisionStatus.NOT_YET_ENFORCED,
+            effective_from="2025-11-21",
+            status=ProvisionStatus.ACTIVE,
             extraction_method="OFFICIAL_STATUTE_TEXT",
-            source_location_page="Page 6, Gazette Extraordinary Part II Sec 1",
+            official_uri="https://egazette.gov.in",
+            document_identifier="S.O. 5322(E)",
+            source_location_page="S.O. 5322(E), Gazette of India, Extraordinary, Part II-Sec 3(ii)",
             applicability_conditions=[
                 {
                     "condition_type": "ESTABLISHMENT_TYPE",
@@ -358,9 +405,12 @@ def seed_initial_indian_legal_corpus(db_path: Optional[str] = None) -> Dict[str,
                 "in such manner as may be prescribed: Provided that different floor wage may be fixed for different geographical areas."
             ),
             citation_key="Code on Wages, 2019 § 9(1)",
-            status=ProvisionStatus.NOT_YET_ENFORCED,
+            effective_from="2025-11-21",
+            status=ProvisionStatus.ACTIVE,
             extraction_method="OFFICIAL_STATUTE_TEXT",
-            source_location_page="Page 8, Gazette Extraordinary Part II Sec 1",
+            official_uri="https://egazette.gov.in",
+            document_identifier="S.O. 5322(E)",
+            source_location_page="S.O. 5322(E), Gazette of India, Extraordinary, Part II-Sec 3(ii)",
             applicability_conditions=[
                 {
                     "condition_type": "JURISDICTION",
@@ -382,9 +432,32 @@ def seed_initial_indian_legal_corpus(db_path: Optional[str] = None) -> Dict[str,
                 "and on monthly basis, before the expiry of the seventh day of the succeeding month."
             ),
             citation_key="Code on Wages, 2019 § 17(1)",
+            effective_from="2025-11-21",
+            status=ProvisionStatus.ACTIVE,
+            extraction_method="OFFICIAL_STATUTE_TEXT",
+            official_uri="https://egazette.gov.in",
+            document_identifier="S.O. 5322(E)",
+            source_location_page="S.O. 5322(E), Gazette of India, Extraordinary, Part II-Sec 3(ii)",
+        ),
+        # Provision-level exception: Section 42(1)-(3) withheld from enforcement by S.O. 5322(E)
+        LegalProvisionCreate(
+            source_id="code-on-wages-2019",
+            chapter="Chapter V - Advisory Board",
+            section="42",
+            subsection="1",
+            heading="Central Advisory Board constitution (Excluded from S.O. 5322(E) commencement)",
+            provision_text=(
+                "The Central Government shall constitute the Central Advisory Board which shall consist of persons to be nominated "
+                "by the Central Government representing employers and employees in equal number, and independent persons not exceeding "
+                "one-third of the total members."
+            ),
+            citation_key="Code on Wages, 2019 § 42(1)",
+            effective_from=None,
             status=ProvisionStatus.NOT_YET_ENFORCED,
             extraction_method="OFFICIAL_STATUTE_TEXT",
-            source_location_page="Page 12, Gazette Extraordinary Part II Sec 1",
+            official_uri="https://egazette.gov.in",
+            document_identifier="S.O. 5322(E) (Withheld)",
+            source_location_page="Section 42(1)-(3) excluded from commencement under S.O. 5322(E)",
         ),
     ]
 
