@@ -138,10 +138,29 @@ class BM25Index:
 
 
 class HybridGraphRetriever:
-    """Hybrid BM25 + dense retriever with 1-hop deontic graph expansion."""
+    """Hybrid BM25 + dense retriever with 1-hop deontic graph expansion and context awareness."""
 
     def __init__(self, db_path: Optional[str] = None):
         self.db_path = db_path
+        self.last_retrieval_debug: Optional[Dict[str, Any]] = None
+
+    def _build_context_infused_query(
+        self,
+        query: str,
+        factual_context: Optional[str] = None,
+        persona: Optional[str] = None,
+        task_id: Optional[str] = None,
+    ) -> str:
+        """
+        Intelligently incorporate relevant factual context without allowing
+        generic persona roles or irrelevant metadata to distort semantic search.
+        Preserves original query as primary anchor.
+        """
+        parts = [query.strip()]
+        if factual_context and factual_context.strip():
+            clean_fact = factual_context.strip()
+            parts.append(clean_fact)
+        return " ".join(parts)
 
     def retrieve(
         self,
@@ -149,21 +168,41 @@ class HybridGraphRetriever:
         query: str,
         top_k: int = 5,
         enable_graph_expansion: bool = True,
+        factual_context: Optional[str] = None,
+        persona: Optional[str] = None,
+        task_id: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         with get_db_context(self.db_path) as conn:
             repo = Repository(conn)
             clauses = repo.list_clauses(workspace_id=workspace_id)
             if not clauses:
+                self.last_retrieval_debug = {
+                    "workspace_id": workspace_id,
+                    "original_query": query,
+                    "effective_query": query,
+                    "factual_context": factual_context,
+                    "persona": persona,
+                    "task_id": task_id,
+                    "clauses_count": 0,
+                    "top_clauses": [],
+                }
                 return []
 
-            # 1. Compute BM25 scores
+            effective_query = self._build_context_infused_query(
+                query=query,
+                factual_context=factual_context,
+                persona=persona,
+                task_id=task_id,
+            )
+
+            # 1. Compute BM25 scores using effective query
             bm25 = BM25Index(clauses)
-            bm25_scores = bm25.score(query)
+            bm25_scores = bm25.score(effective_query)
             max_bm25 = max(bm25_scores) if bm25_scores and max(bm25_scores) > 0 else 1.0
             norm_bm25 = [s / max_bm25 for s in bm25_scores]
 
-            # 2. Compute Dense Cosine Scores
-            q_emb = compute_embedding(query)
+            # 2. Compute Dense Cosine Scores using effective query embedding
+            q_emb = compute_embedding(effective_query)
             dense_scores = []
             for clause in clauses:
                 emb = None
@@ -188,6 +227,26 @@ class HybridGraphRetriever:
             # Sort by hybrid score
             scored_clauses.sort(key=lambda x: x["score"], reverse=True)
             top_results = scored_clauses[:top_k]
+
+            # Save observable debug state for introspection and observability
+            self.last_retrieval_debug = {
+                "workspace_id": workspace_id,
+                "original_query": query,
+                "effective_query": effective_query,
+                "factual_context": factual_context,
+                "persona": persona,
+                "task_id": task_id,
+                "clauses_count": len(clauses),
+                "top_clauses": [
+                    {
+                        "id": c["id"],
+                        "score": c["score"],
+                        "section": c.get("section_number"),
+                        "heading": c.get("heading"),
+                    }
+                    for c in top_results
+                ],
+            }
 
             if not enable_graph_expansion:
                 return top_results

@@ -99,6 +99,18 @@ export interface AgentBrief {
   flagged_gaps_or_undefined_terms: string[];
 }
 
+export interface DocumentFinding {
+  category: 'DIRECT_DOCUMENT_EVIDENCE' | 'INFERENCE_FROM_EVIDENCE' | 'POTENTIAL_CONFLICT' | 'MISSING_INFORMATION' | 'UNSUPPORTED_CONCLUSION';
+  statement: string;
+  clause_id?: string;
+  doc_id?: string;
+  doc_title?: string;
+  section_number?: string;
+  char_start?: number;
+  char_end?: number;
+  evidence_quote?: string;
+}
+
 export interface CourtroomVerdict {
   verdict_state: 'ANSWERABLE' | 'CONTRADICTION' | 'EXPLOITABLE_LOOPHOLE' | 'NOT_COVERED';
   benchmark_compat_state: 'ANSWERABLE' | 'CONTRADICTION' | 'NOT_COVERED';
@@ -108,6 +120,7 @@ export interface CourtroomVerdict {
   skeptic_brief?: AgentBrief;
   missing_prerequisites: string[];
   verified_citations: CitationSpan[];
+  findings?: DocumentFinding[];
 }
 
 export interface CounterfactualPatchResult {

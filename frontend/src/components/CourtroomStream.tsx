@@ -303,6 +303,53 @@ export const CourtroomStream: React.FC<CourtroomStreamProps> = ({
                 ))}
               </div>
             )}
+
+            {/* Document Grounded Findings */}
+            {verdict.findings && verdict.findings.length > 0 && (
+              <div className="pl-7 pt-3 mt-2 border-t border-slate-800/80 space-y-1.5">
+                <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider block">
+                  Document-Grounded Findings
+                </span>
+                <div className="space-y-1.5">
+                  {verdict.findings.map((finding, fIdx) => {
+                    const badgeStyles: Record<string, string> = {
+                      DIRECT_DOCUMENT_EVIDENCE: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30',
+                      INFERENCE_FROM_EVIDENCE: 'bg-sky-500/10 text-sky-300 border-sky-500/30',
+                      POTENTIAL_CONFLICT: 'bg-rose-500/10 text-rose-300 border-rose-500/30',
+                      MISSING_INFORMATION: 'bg-slate-500/10 text-slate-300 border-slate-500/30',
+                      UNSUPPORTED_CONCLUSION: 'bg-amber-500/10 text-amber-300 border-amber-500/30',
+                    };
+                    const labelMap: Record<string, string> = {
+                      DIRECT_DOCUMENT_EVIDENCE: 'Direct Evidence',
+                      INFERENCE_FROM_EVIDENCE: 'Inference',
+                      POTENTIAL_CONFLICT: 'Potential Conflict',
+                      MISSING_INFORMATION: 'Missing Information',
+                      UNSUPPORTED_CONCLUSION: 'Unsupported',
+                    };
+                    return (
+                      <div
+                        key={fIdx}
+                        className="p-2 bg-slate-950/60 border border-slate-800/80 rounded-lg text-[11px] flex items-start justify-between gap-2"
+                      >
+                        <div className="space-y-0.5">
+                          <span className="text-slate-200">{finding.statement}</span>
+                          {finding.evidence_quote && (
+                            <p className="text-[10px] text-slate-400 font-mono italic">
+                              "{finding.evidence_quote.slice(0, 120)}..."
+                            </p>
+                          )}
+                        </div>
+                        <span
+                          className={`shrink-0 px-2 py-0.5 rounded text-[9px] font-mono font-bold uppercase border ${badgeStyles[finding.category] || 'bg-slate-800 text-slate-300 border-slate-700'}`}
+                        >
+                          {labelMap[finding.category] || finding.category}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

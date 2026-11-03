@@ -78,6 +78,11 @@ async def upload_document(
         if not raw_text.strip():
             raise HTTPException(status_code=400, detail="Uploaded file contains no readable text")
 
+        # Handle repeated uploads by replacing existing document if duplicate filename in same workspace
+        existing_doc = repo.find_document_by_filename(workspace_id, file.filename)
+        if existing_doc:
+            repo.delete_document(existing_doc["id"])
+
         doc_id = f"doc_{uuid.uuid4().hex[:8]}"
         title = file.filename.rsplit(".", 1)[0].replace("_", " ").title()
         repo.create_document(

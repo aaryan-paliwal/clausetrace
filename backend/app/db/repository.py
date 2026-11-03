@@ -48,6 +48,16 @@ class Repository:
         row = cursor.fetchone()
         return dict(row) if row else None
 
+    def find_document_by_filename(self, workspace_id: str, filename: str) -> Optional[Dict[str, Any]]:
+        cursor = self.conn.execute("SELECT * FROM documents WHERE workspace_id = ? AND filename = ?", (workspace_id, filename))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+    def delete_document(self, doc_id: str) -> bool:
+        """Delete a document and trigger ON DELETE CASCADE for clauses and rules."""
+        cursor = self.conn.execute("DELETE FROM documents WHERE id = ?", (doc_id,))
+        return cursor.rowcount > 0
+
     def list_documents(self, workspace_id: str) -> List[Dict[str, Any]]:
         cursor = self.conn.execute("SELECT * FROM documents WHERE workspace_id = ? ORDER BY authority_rank ASC, title ASC", (workspace_id,))
         return [dict(row) for row in cursor.fetchall()]

@@ -16,8 +16,10 @@ from app.llm.schemas import (
     CounterfactualPatchResult,
     CourtroomVerdict,
     DeonticModality,
+    DocumentFinding,
     ExtractedDeonticRule,
     ExtractedRuleList,
+    FindingCategory,
     PairwiseConflictAudit,
     VerdictState,
 )
@@ -408,6 +410,50 @@ class MetaLlamaGateway:
             char_end=min(len(text), 100),
         )
 
+        # Generate structured document findings distinguishing evidence, inference, and conflict
+        findings = [
+            DocumentFinding(
+                category=FindingCategory.DIRECT_DOCUMENT_EVIDENCE,
+                statement="Governing document sets explicit terms and conditions.",
+                clause_id="clause_001",
+                doc_id="doc_001",
+                doc_title="Governing Document",
+                section_number="1.0",
+                char_start=0,
+                char_end=min(len(text), 100),
+                evidence_quote=text[:100] if text else "Verified contractual rule excerpt.",
+            )
+        ]
+        if state == VerdictState.CONTRADICTION:
+            findings.append(
+                DocumentFinding(
+                    category=FindingCategory.POTENTIAL_CONFLICT,
+                    statement="Contradictory modal obligations or mismatched parameters detected between provisions.",
+                    clause_id="clause_001",
+                    doc_id="doc_001",
+                    doc_title="Governing Document",
+                    section_number="1.0",
+                )
+            )
+        elif state == VerdictState.NOT_COVERED:
+            findings.append(
+                DocumentFinding(
+                    category=FindingCategory.MISSING_INFORMATION,
+                    statement="The inquiry premise is not addressed by any clause in the active document corpus.",
+                )
+            )
+        elif state == VerdictState.EXPLOITABLE_LOOPHOLE:
+            findings.append(
+                DocumentFinding(
+                    category=FindingCategory.INFERENCE_FROM_EVIDENCE,
+                    statement="Vague or undefined terminology creates an exploitable exception.",
+                    clause_id="clause_001",
+                    doc_id="doc_001",
+                    doc_title="Governing Document",
+                    section_number="1.0",
+                )
+            )
+
         return CourtroomVerdict(
             verdict_state=state,
             benchmark_compat_state=compat,
@@ -417,4 +463,5 @@ class MetaLlamaGateway:
             skeptic_brief=skeptic,
             missing_prerequisites=[],
             verified_citations=[citation],
+            findings=findings,
         )

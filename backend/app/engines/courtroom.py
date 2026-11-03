@@ -57,12 +57,15 @@ class AdversarialCourtroomEngine:
         task_id: Optional[str] = None,
     ) -> CourtroomVerdict:
         """Run the full adversarial pipeline: retrieval -> advocate + skeptic -> adjudicator."""
-        # 1. Retrieve top clauses + 1-hop deontic graph neighbors
+        # 1. Retrieve top clauses + 1-hop deontic graph neighbors with context-awareness
         retrieved_clauses = self.retriever.retrieve(
             workspace_id=workspace_id,
             query=query,
             top_k=4,
             enable_graph_expansion=True,
+            factual_context=factual_context,
+            persona=persona,
+            task_id=task_id,
         )
 
         # Relevance gate check
@@ -123,9 +126,13 @@ class AdversarialCourtroomEngine:
             query=query,
             top_k=4,
             enable_graph_expansion=True,
+            factual_context=factual_context,
+            persona=persona,
+            task_id=task_id,
         )
 
-        yield f"event: retrieval\ndata: {json.dumps({'clauses_count': len(retrieved_clauses), 'clauses': retrieved_clauses[:4]})}\n\n"
+        debug_info = getattr(self.retriever, "last_retrieval_debug", None)
+        yield f"event: retrieval\ndata: {json.dumps({'clauses_count': len(retrieved_clauses), 'clauses': retrieved_clauses[:4], 'debug': debug_info})}\n\n"
 
         if not retrieved_clauses or self._is_completely_irrelevant(query, retrieved_clauses):
             verdict = self._build_not_covered_verdict(query)

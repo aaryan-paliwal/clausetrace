@@ -60,6 +60,13 @@ Issue a strict, deterministic ruling conforming to the CourtroomVerdict JSON sch
 - confidence_score: Float between 0.0 and 1.0 based on clarity and corroboration of citations.
 - executive_ruling: A decisive, professional legal holding explaining the ruling.
 - verified_citations: Verbatim quotes with exact clause IDs and document titles.
+- findings: A list of distinct analytical findings. For every finding, assign exactly one category:
+  * DIRECT_DOCUMENT_EVIDENCE: Literal obligations, rights, numbers, or terms stated directly in the text.
+  * INFERENCE_FROM_EVIDENCE: Logical deductive conclusion drawn strictly from documented terms.
+  * POTENTIAL_CONFLICT: Apparent friction or contradiction between two or more provisions.
+  * MISSING_INFORMATION: Information required to resolve the premise that is not present in the document.
+  * UNSUPPORTED_CONCLUSION: Any argument or claim that lacks document backing or cannot be verified.
+  Never invent statutory authority or legal enactments.
 
 Rule of Precedence:
 1. If evidence is absent or irrelevant -> NOT_COVERED.

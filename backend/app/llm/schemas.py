@@ -91,6 +91,28 @@ class AgentBrief(BaseModel):
     flagged_gaps_or_undefined_terms: List[str] = Field(default_factory=list)
 
 
+class FindingCategory(str, Enum):
+    """Categorization of document-grounded legal/contractual findings."""
+    DIRECT_DOCUMENT_EVIDENCE = "DIRECT_DOCUMENT_EVIDENCE"
+    INFERENCE_FROM_EVIDENCE = "INFERENCE_FROM_EVIDENCE"
+    POTENTIAL_CONFLICT = "POTENTIAL_CONFLICT"
+    MISSING_INFORMATION = "MISSING_INFORMATION"
+    UNSUPPORTED_CONCLUSION = "UNSUPPORTED_CONCLUSION"
+
+
+class DocumentFinding(BaseModel):
+    """Structured analytical finding grounded in document evidence."""
+    category: FindingCategory
+    statement: str
+    clause_id: Optional[str] = None
+    doc_id: Optional[str] = None
+    doc_title: Optional[str] = None
+    section_number: Optional[str] = None
+    char_start: Optional[int] = None
+    char_end: Optional[int] = None
+    evidence_quote: Optional[str] = None
+
+
 class CourtroomVerdict(BaseModel):
     """Final adjudicated verdict from the courtroom pipeline."""
     verdict_state: VerdictState
@@ -103,6 +125,7 @@ class CourtroomVerdict(BaseModel):
     skeptic_brief: AgentBrief
     missing_prerequisites: List[str] = Field(default_factory=list)
     verified_citations: List[CitationSpan] = Field(default_factory=list)
+    findings: List[DocumentFinding] = Field(default_factory=list)
 
 
 class CounterfactualPatchResult(BaseModel):
